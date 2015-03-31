@@ -1,0 +1,27 @@
+# RNA 1.0 ASCII
+
+#
+# $Author: gordon $
+# $Date: 2003/07/16 20:18:50 $
+# $Source: /sys/cvs/rna/samples/addrbook.rna,v $
+# $Revision: 1.2 $
+#
+
+# Copyright (c) 1998 Gordon Cichon
+# Distributed under the GNU GPL.
+
+types:[
+Address-Mail:(TypeDescriptor "Address-Mail" 3 "sss" 
+	["name" "nickname" "email"])
+Address-Book:(TypeDescriptor "Address-Book" 1 "B" ["contents"]
+	types=[Address-Mail])
+]
+
+addressbook:
+(Address-Book [
+	(Address-Mail "Gordon@Cichon.de""Gordon Cichon" "gordon")
+ 	(Address-Mail "christopher@tomschuetz.com" "Christopher Tomschütz" "dido")
+ 	(Address-Mail "pix@m.stadtnet.de" "Matthias Danner" "pix")
+	(Address-Mail "Kalinka@Cichon.de" "Caroline Cichon")
+])
+

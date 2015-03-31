@@ -1,0 +1,22 @@
+# -*-Makefile-*-
+
+PREFIX = /home/gordon/local
+export RNA_HOME = /home/gordon/local/src/rna-0.14b
+
+all:
+	make -C build all
+
+install:
+	mkdir -p $(PREFIX)/bin
+	cp -a bin/* $(PREFIX)/bin
+	mkdir -p $(PREFIX)/lib
+	cp -a lib/* $(PREFIX)/lib
+	mkdir -p $(PREFIX)/include
+	cp -a include/* $(PREFIX)/include
+
+clean:
+	make -C build clean
+
+distclean:
+	make -C build realclean
+	rm Makefile

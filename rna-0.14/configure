@@ -1,0 +1,29 @@
+#!/bin/sh
+
+prefix=/usr/local
+
+while [ $# -ne 0 ] ; do
+    case "$1" in
+	--prefix*)
+	    prefix=`echo "$1" | sed -e 's/^--prefix=\(.*\)$/\1/'`
+	    shift
+	    ;;
+	*)
+	    echo unknown option "$1"
+	    exit 1
+	    ;;
+    esac
+done
+
+rna_home=`dirname "$0" | sed -e 's*[.]/**g'`
+case "$rna_home" in 
+    /*)
+	;;
+    *)
+	rna_home="$PWD/$rna_home"
+esac
+rna_home=`echo $rna_home | sed -e 's*/$**g' -e 's*/[.]**g'`
+
+sed -e 's*PREFIX =*PREFIX = '$prefix'*g' \
+    -e 's*RNA_HOME =*RNA_HOME = '$rna_home'*g' \
+    Makefile.in > Makefile

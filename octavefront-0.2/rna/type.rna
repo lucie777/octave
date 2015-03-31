@@ -1,0 +1,74 @@
+# RNA 1.0 ASCII
+
+#
+# $Author: mouse-hs $
+# $Date: 2003/07/09 11:04:22 $
+# $Source: /srv/cvs/mns-mouse-gc/octave/rna/type.rna,v $
+# $Revision: 1.4 $
+#
+
+#################################################################
+#
+# Types
+#
+#################################################################
+
+module-type: (Module "module-type" 
+	cpp_path_prefix="$RNA_DIR"
+	cpp_header_path_prefix="include"
+	cpp_header_path="class"
+	cpp_inline_path="inline"
+	cpp_source_path="src"
+	cpp_decl_filename="mouse-type.h"
+	cpp_init_filename="type-init.cc"
+	cpp_make_filename="build/Makefile.type"
+	cpp_namespace="Mouse"
+	cpp_module_prefix="Type"
+	cpp_lib_filename="lib/libtype.a"
+	stratego_filename="type.stratego"
+[
+
+type-unknown: (TypeDescriptor "type-unknown" 0 "" [] at_name="TypeUnknown")
+
+type-function: (TypeDescriptor "type-function" 2 "BB" 
+	["outgoing" "incoming"] 
+	types=[type type]
+	at_name="TypeFunction")
+
+type-struct: (TypeDescriptor "type-struct" 1 "B" ["members"] 
+	types=[member]
+	at_name="TypeStruct")
+member: (TypeDescriptor "member" 2 "sA" ["name" "type"] 
+	types=[nil type]
+	at_name="Member")
+
+type-string: (TypeDescriptor "type-string" 0 "" [] at_name="TypeString")
+
+type-bool: (TypeDescriptor "type-bool" 0 "" [] at_name="TypeBool")
+type-int: (TypeDescriptor "type-int" 2 "bi" 
+	["sign" "width"]
+	at_name="TypeInt")
+type-fixed: (TypeDescriptor "type-fixed" 3 "bii" 
+	["sign" "width" "fraction"]
+	at_name="TypeFixed")
+type-float: (TypeDescriptor "type-float" 1 "i" ["width"]
+	at_name="TypeFloat")
+type-complex: (TypeDescriptor "type-complex" 1 "A" ["type"] 
+	types=[type] at_name="TypeComplex")
+type-vector: (TypeDescriptor "type-vector" 2 "AA" 
+	["type" "dimension"] types=[type dimension]
+	at_name="TypeVector")
+type-tensor: (TypeDescriptor "type-tensor" 2 "AB" 
+	["type" "dimensions"] types=[type dimension]
+	at_name="TypeTensor")
+
+type-scalar: (Variant "type-scalar" [type-int type-fixed type-float])
+
+type:(Variant "type" [type-unknown type-function type-struct type-string
+	type-bool type-int type-fixed type-float type-complex type-vector type-tensor])
+dimension-unknown: (TypeDescriptor "dimension-unknown" 0 "" []
+	at_name="DimensionUnknown")
+dimension-known: (TypeDescriptor "dimension-known" 1 "i" ["size"]
+	at_name="DimensionKnown")
+dimension:(Variant "dimension" [dimension-known dimension-unknown])
+])

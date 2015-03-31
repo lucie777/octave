@@ -1,0 +1,10 @@
+Installation Instructions
+
+1. Install the RNA library and optionally the Aterm library.
+2. Unpack the octave front-end archive
+3. Install according to the instructions given in the 'INSTALL' file of the octave distribution
+4. Pass the option '--enable-rna' to 'configure to switch on facilities to generate intermediate representation.
+5. Pass the option '--enable-aterm' to switch on facilities to generate Aterm output.
+6. If your are using the 3-series of gcc, please use the environment variable CXXFLAGS to set '-fpermissive'.
+
+After installation, you can switch on generation of intermediate code by giving the option '-c' to octave. The name of the output file can be specified by '-o'. The option '-F rna' switches to RNA format, '-F aterm_text' switches to Aterm format.

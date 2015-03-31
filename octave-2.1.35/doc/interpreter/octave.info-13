@@ -1,0 +1,839 @@
+This is octave.info, produced by makeinfo version 4.0b from octave.texi.
+
+START-INFO-DIR-ENTRY
+* Octave: (octave).	Interactive language for numerical computations.
+END-INFO-DIR-ENTRY
+
+   Copyright (C) 1996, 1997 John W. Eaton.
+
+   Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+   Permission is granted to copy and distribute modified versions of
+this manual under the conditions for verbatim copying, provided that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+   Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions.
+
+
+File: octave.info,  Node: Installation Problems,  Next: Binary Distributions,  Prev: Installation,  Up: Installation
+
+Installation Problems
+=====================
+
+   This section contains a list of problems (and some apparent problems
+that don't really mean anything is wrong) that may show up during
+installation of Octave.
+
+   * On some SCO systems, `info' fails to compile if `HAVE_TERMIOS_H'
+     is defined int `config.h'.  Simply removing the definition from
+     `info/config.h' should allow it to compile.
+
+   * If `configure' finds `dlopen', `dlsym', `dlclose', and `dlerror',
+     but not the header file `dlfcn.h', you need to find the source for
+     the header file and install it in the directory `usr/include'.
+     This is reportedly a problem with Slackware 3.1.  For Linux/GNU
+     systems, the source for `dlfcn.h' is in the `ldso' package.
+
+   * Building `.oct' files doesn't work.
+
+     You should probably have a shared version of `libstdc++'.  A patch
+     is needed to build shared versions of version 2.7.2 of `libstdc++'
+     on the HP-PA architecture.  You can find the patch at
+     <ftp://ftp.cygnus.com/pub/g++/libg++-2.7.2-hppa-gcc-fix>.
+
+   * On some alpha systems there may be a problem with the `libdxml'
+     library, resulting in floating point errors and/or segmentation
+     faults in the linear algebra routines called by Octave.  If you
+     encounter such problems, then you should modify the configure
+     script so that `SPECIAL_MATH_LIB' is not set to `-ldxml'.
+
+   * On FreeBSD systems Octave may hang while initializing some internal
+     constants.  The fix appears to be to use
+
+          options      GPL_MATH_EMULATE
+
+     rather than
+
+          options      MATH_EMULATE
+
+     in the kernel configuration files (typically found in the directory
+     `/sys/i386/conf'.  After making this change, you'll need to rebuild
+     the kernel, install it, and reboot.
+
+   * If you encounter errors like
+
+          passing `void (*)()' as argument 2 of
+            `octave_set_signal_handler(int, void (*)(int))'
+
+     or
+
+          warning: ANSI C++ prohibits conversion from `(int)' to `(...)'
+
+     while compiling `sighandlers.cc', you may need to edit some files
+     in the `gcc' include subdirectory to add proper prototypes for
+     functions there.  For example, Ultrix 4.2 needs proper
+     declarations for the `signal' function and the `SIG_IGN' macro in
+     the file `signal.h'.
+
+     On some systems the `SIG_IGN' macro is defined to be something like
+     this:
+
+          #define  SIG_IGN  (void (*)())1
+
+     when it should really be something like:
+
+          #define  SIG_IGN  (void (*)(int))1
+
+     to match the prototype declaration for the `signal' function.  This
+     change should also be made for the `SIG_DFL' and `SIG_ERR'
+     symbols. It may be necessary to change the definitions in
+     `sys/signal.h' as well.
+
+     The `gcc' `fixincludes' and `fixproto' scripts should probably fix
+     these problems when `gcc' installs its modified set of header
+     files, but I don't think that's been done yet.
+
+     *You should not change the files in `/usr/include'*.  You can find
+     the `gcc' include directory tree by running the command
+
+          gcc -print-libgcc-file-name
+
+     The directory of `gcc' include files normally begins in the same
+     directory that contains the file `libgcc.a'.
+
+   * Some of the Fortran subroutines may fail to compile with older
+     versions of the Sun Fortran compiler.  If you get errors like
+
+          zgemm.f:
+          	zgemm:
+          warning: unexpected parent of complex expression subtree
+          zgemm.f, line 245: warning: unexpected parent of complex
+            expression subtree
+          warning: unexpected parent of complex expression subtree
+          zgemm.f, line 304: warning: unexpected parent of complex
+            expression subtree
+          warning: unexpected parent of complex expression subtree
+          zgemm.f, line 327: warning: unexpected parent of complex
+            expression subtree
+          pcc_binval: missing IR_CONV in complex op
+          make[2]: *** [zgemm.o] Error 1
+
+     when compiling the Fortran subroutines in the `libcruft'
+     subdirectory, you should either upgrade your compiler or try
+     compiling with optimization turned off.
+
+   * On NeXT systems, if you get errors like this:
+
+          /usr/tmp/cc007458.s:unknown:Undefined local symbol LBB7656
+          /usr/tmp/cc007458.s:unknown:Undefined local symbol LBE7656
+
+     when compiling `Array.cc' and `Matrix.cc', try recompiling these
+     files without `-g'.
+
+   * Some people have reported that calls to shell_cmd and the pager do
+     not work on SunOS systems.  This is apparently due to having
+     `G_HAVE_SYS_WAIT' defined to be 0 instead of 1 when compiling
+     `libg++'.
+
+   * On NeXT systems, linking to `libsys_s.a' may fail to resolve the
+     following functions
+
+          _tcgetattr
+          _tcsetattr
+          _tcflow
+
+     which are part of `libposix.a'.  Unfortunately, linking Octave with
+     `-posix' results in the following undefined symbols.
+
+          .destructors_used
+          .constructors_used
+          _objc_msgSend
+          _NXGetDefaultValue
+          _NXRegisterDefaults
+          .objc_class_name_NXStringTable
+          .objc_class_name_NXBundle
+
+     One kluge around this problem is to extract `termios.o' from
+     `libposix.a', put it in Octave's `src' directory, and add it to
+     the list of files to link together in the makefile.  Suggestions
+     for better ways to solve this problem are welcome!
+
+   * If Octave crashes immediately with a floating point exception, it
+     is likely that it is failing to initialize the IEEE floating point
+     values for infinity and NaN.
+
+     If your system actually does support IEEE arithmetic, you should
+     be able to fix this problem by modifying the function
+     `octave_ieee_init' in the file `lo-ieee.cc' to correctly
+     initialize Octave's internal infinity and NaN variables.
+
+     If your system does not support IEEE arithmetic but Octave's
+     configure script incorrectly determined that it does, you can work
+     around the problem by editing the file `config.h' to not define
+     `HAVE_ISINF', `HAVE_FINITE', and `HAVE_ISNAN'.
+
+     In any case, please report this as a bug since it might be
+     possible to modify Octave's configuration script to automatically
+     determine the proper thing to do.
+
+   * After installing the binary distribution of Octave in an alternate
+     directory, the Emacs command `run-octave' doesn't work.  Emacs
+     hangs in `accept-process-output' in `inferior-octave-startup'.
+
+     This seems to be a problem with executing a shell script using the
+     comint package.  You can avoid the problem by changing the way
+     Octave is installed to eliminate the need for the shell script.
+     You can either compile and install Octave using the source
+     distribution, reinstall the binary distribution in the default
+     directory, or copy the commands in the octave shell script wrapper
+     to your shell startup files (and the shell startup files for
+     anyone else who is using Octave) and then rename the file
+     `octave.bin' to be `octave'.
+
+
+File: octave.info,  Node: Binary Distributions,  Prev: Installation Problems,  Up: Installation
+
+Binary Distributions
+====================
+
+   Although Octave is not very difficult to build from its sources, it
+is a relatively large program that does require a significant amount of
+time and disk space to compile and install.  Because of this, many
+people want to be able to obtain binary distributions so they can start
+using Octave immediately, without having to bother with the details of
+compiling it first.  This is understandable, so I try to maintain a
+current collection of binary distributions at
+<ftp://ftp.che.wisc.edu/pub/octave/BINARIES>.
+
+   Please understand, however, that there is only a limited amount of
+time available to devote to making binaries, so binaries may not be
+immediately available for some platforms.  (Please contact
+<bug-octave@bevo.che.wisc.edu> if you are interested in helping make a
+binary distribution available for your system.)
+
+* Menu:
+
+* Installing Octave from a Binary Distribution::
+* Creating a Binary Distribution::
+
+
+File: octave.info,  Node: Installing Octave from a Binary Distribution,  Next: Creating a Binary Distribution,  Prev: Binary Distributions,  Up: Binary Distributions
+
+Installing Octave from a Binary Distribution
+--------------------------------------------
+
+   To install Octave from a binary distribution, execute the command
+
+     sh ./install-octave
+
+in the top level directory of the distribution.
+
+   Binary distributions are normally compiled assuming that Octave will
+be installed in the following subdirectories of `/usr/local'.
+
+`bin'
+     Octave and other binaries that people will want to run directly.
+
+`lib'
+     Shared libraries that Octave needs in order to run.  These files
+     are not included if you are installing a statically linked version
+     of Octave.
+
+`man/man1'
+     Unix-style man pages describing Octave.
+
+`info'
+     Info files describing Octave.
+
+`share/octave/VERSION/m'
+     Function files distributed with Octave.  This includes the Octave
+     version, so that multiple versions of Octave may be installed at
+     the same time.
+
+`libexec/octave/VERSION/exec/ARCH'
+     Executables to be run by Octave rather than the user.
+
+`libexec/octave/VERSION/oct/ARCH'
+     Object files that will be dynamically loaded.
+
+`share/octave/VERSION/imagelib'
+     Image files that are distributed with Octave.
+
+where VERSION stands for the current version number of the interpreter,
+and ARCH is the type of computer on which Octave is installed (for
+example, `i586-pc-linux-gnu').
+
+   If these directories don't exist, the script `install-octave' will
+create them for you.  The installation script also creates the following
+subdirectories of `/usr/local' that are intended for locally installed
+functions:
+
+`share/octave/site/m'
+     Locally installed M-files.
+
+`libexec/octave/site/exec/ARCH'
+     Locally installed binaries intended to be run by Octave rather
+     than by the user.
+
+`libexec/octave/site/octave/ARCH'
+     Local object files that will be dynamically linked.
+
+   If it is not possible for you to install Octave in `/usr/local', or
+if you would prefer to install it in a different directory, you can
+specify the name of the top level directory as an argument to the
+`install-octave' script.  For example:
+
+     sh ./install-octave /some/other/directory
+
+will install Octave in subdirectories of the directory
+`/some/other/directory'.
+
+
+File: octave.info,  Node: Creating a Binary Distribution,  Prev: Installing Octave from a Binary Distribution,  Up: Binary Distributions
+
+Creating a Binary Distribution
+------------------------------
+
+   Here is how to build a binary distribution for others to use.  If you
+want to make a binary distribution for your system available along with
+the Octave sources and binaries on <ftp.che.wisc.edu>, please follow
+this procedure.  For directions explaining how to make the binary
+available on the ftp site, please contact
+<bug-octave@bevo.che.wisc.edu>.
+
+   * Unpack the source distribution:
+
+          gunzip -c octave-2.1.x.tar.gz | tar xf -
+
+   * Change your current directory to the top-level directory of the
+     source distribution:
+
+          cd octave-2.1.x
+
+   * Make the binary distribution:
+
+          make binary-dist
+
+     This will create a compressed tar file ready for distribution.  It
+     will have a name like `octave-2.1.x-i586-pc-linux-gnu.tar.gz'
+
+
+File: octave.info,  Node: Emacs,  Next: Grammar,  Prev: Installation,  Up: Top
+
+Emacs Octave Support
+********************
+
+   The development of Octave code can greatly be facilitated using Emacs
+with Octave mode, a major mode for editing Octave files which can e.g.
+automatically indent the code, do some of the typing (with Abbrev mode)
+and show keywords, comments, strings, etc. in different faces (with
+Font-lock mode on devices that support it).
+
+   It is also possible to run Octave from within Emacs, either by
+directly entering commands at the prompt in a buffer in Inferior Octave
+mode, or by interacting with Octave from within a file with Octave
+code.  This is useful in particular for debugging Octave code.
+
+   Finally, you can convince Octave to use the Emacs info reader for
+`help -i'.
+
+   All functionality is provided by the Emacs Lisp package EOS (for
+"Emacs Octave Support").  This chapter describes how to set up and use
+this package.
+
+   Please contact <Kurt.Hornik@ci.tuwien.ac.at> if you have any
+questions or suggestions on using EOS.
+
+* Menu:
+
+* Installing EOS::
+* Using Octave Mode::
+* Running Octave From Within Emacs::
+* Using the Emacs Info Reader for Octave::
+
+
+File: octave.info,  Node: Installing EOS,  Next: Using Octave Mode,  Prev: Emacs,  Up: Emacs
+
+Installing EOS
+==============
+
+   The Emacs package EOS consists of the three files `octave-mod.el',
+`octave-inf.el', and `octave-hlp.el'.  These files, or better yet their
+byte-compiled versions, should be somewhere in your Emacs load-path.
+
+   If you have GNU Emacs with a version number at least as high as
+19.35, you are all set up, because EOS is respectively will be part of
+GNU Emacs as of version 19.35.
+
+   Otherwise, copy the three files from the `emacs' subdirectory of the
+Octave distribution to a place where Emacs can find them (this depends
+on how your Emacs was installed).  Byte-compile them for speed if you
+want.
+
+
+File: octave.info,  Node: Using Octave Mode,  Next: Running Octave From Within Emacs,  Prev: Installing EOS,  Up: Emacs
+
+Using Octave Mode
+=================
+
+   If you are lucky, your sysadmins have already arranged everything so
+that Emacs automatically goes into Octave mode whenever you visit an
+Octave code file as characterized by its extension `.m'.  If not,
+proceed as follows.
+
+  1. To begin using Octave mode for all `.m' files you visit, add the
+     following lines to a file loaded by Emacs at startup time,
+     typically your `~/.emacs' file:
+
+          (autoload 'octave-mode "octave-mod" nil t)
+          (setq auto-mode-alist
+                (cons '("\\.m$" . octave-mode) auto-mode-alist))
+
+  2. Finally, to turn on the abbrevs, auto-fill and font-lock features
+     automatically, also add the following lines to one of the Emacs
+     startup files:
+          (add-hook 'octave-mode-hook
+                    (lambda ()
+                      (abbrev-mode 1)
+                      (auto-fill-mode 1)
+                      (if (eq window-system 'x)
+                          (font-lock-mode 1))))
+     See the Emacs manual for more information about how to customize
+     Font-lock mode.
+
+   In Octave mode, the following special Emacs commands can be used in
+addition to the standard Emacs commands.
+
+`C-h m'
+     Describe the features of Octave mode.
+
+`LFD'
+     Reindent the current Octave line, insert a newline and indent the
+     new line (`octave-reindent-then-newline-and-indent').  An abbrev
+     before point is expanded if `abbrev-mode' is non-`nil'.
+
+`TAB'
+     Indents current Octave line based on its contents and on previous
+     lines (`indent-according-to-mode').
+
+`;'
+     Insert an "electric" semicolon (`octave-electric-semi').  If
+     `octave-auto-indent' is non-`nil', reindent the current line.  If
+     `octave-auto-newline' is non-`nil', automagically insert a newline
+     and indent the new line.
+
+``'
+     Start entering an abbreviation (`octave-abbrev-start').  If Abbrev
+     mode is turned on, typing ``C-h' or ``?' lists all abbrevs.  Any
+     other key combination is executed normally.  Note that all Octave
+     abbrevs start with a grave accent.
+
+`M-LFD'
+     Break line at point and insert continuation marker and alignment
+     (`octave-split-line').
+
+`M-TAB'
+     Perform completion on Octave symbol preceding point, comparing that
+     symbol against Octave's reserved words and builtin variables
+     (`octave-complete-symbol').
+
+`M-C-a'
+     Move backward to the beginning of a function
+     (`octave-beginning-of-defun').  With prefix argument N, do it that
+     many times if N is positive;  otherwise, move forward to the N-th
+     following beginning of a function.
+
+`M-C-e'
+     Move forward to the end of a function (`octave-end-of-defun').
+     With prefix argument N, do it that many times if N is positive;
+     otherwise, move back to the N-th preceding end of a function.
+
+`M-C-h'
+     Puts point at beginning and mark at the end of the current Octave
+     function, i.e., the one containing point or following point
+     (`octave-mark-defun').
+
+`M-C-q'
+     Properly indents the Octave function which contains point
+     (`octave-indent-defun').
+
+`M-;'
+     If there is no comment already on this line, create a code-level
+     comment (started by two comment characters) if the line is empty,
+     or an in-line comment (started by one comment character) otherwise
+     (`octave-indent-for-comment').  Point is left after the start of
+     the comment which is properly aligned.
+
+`C-c ;'
+     Puts the comment character `#' (more precisely, the string value of
+     `octave-comment-start') at the beginning of every line in the
+     region (`octave-comment-region').  With just `C-u' prefix
+     argument, uncomment each line in the region.  A numeric prefix
+     argument N means use N comment characters.
+
+`C-c :'
+     Uncomments every line in the region (`octave-uncomment-region').
+
+`C-c C-p'
+     Move one line of Octave code backward, skipping empty and comment
+     lines (`octave-previous-code-line').  With numeric prefix argument
+     N, move that many code lines backward (forward if N is negative).
+
+`C-c C-n'
+     Move one line of Octave code forward, skipping empty and comment
+     lines (`octave-next-code-line').  With numeric prefix argument N,
+     move that many code lines forward (backward if N is negative).
+
+`C-c C-a'
+     Move to the `real' beginning of the current line
+     (`octave-beginning-of-line').  If point is in an empty or comment
+     line, simply go to its beginning;  otherwise, move backwards to the
+     beginning of the first code line which is not inside a continuation
+     statement,  i.e., which does not follow a code line ending in `...'
+     or `\', or is inside an open parenthesis list.
+
+`C-c C-e'
+     Move to the `real' end of the current line (`octave-end-of-line').
+     If point is in a code line, move forward to the end of the first
+     Octave code line which does not end in `...' or `\' or is inside an
+     open parenthesis list.  Otherwise, simply go to the end of the
+     current line.
+
+`C-c M-C-n'
+     Move forward across one balanced begin-end block of Octave code
+     (`octave-forward-block').  With numeric prefix argument N, move
+     forward across N such blocks (backward if N is negative).
+
+`C-c M-C-p'
+     Move back across one balanced begin-end block of Octave code
+     (`octave-backward-block').  With numeric prefix argument N, move
+     backward across N such blocks (forward if N is negative).
+
+`C-c M-C-d'
+     Move forward down one begin-end block level of Octave code
+     (`octave-down-block').  With numeric prefix argument, do it that
+     many times;  a negative argument means move backward, but still go
+     down one level.
+
+`C-c M-C-u'
+     Move backward out of one begin-end block level of Octave code
+     (`octave-backward-up-block').  With numeric prefix argument, do it
+     that many times; a negative argument means move forward, but still
+     to a less deep spot.
+
+`C-c M-C-h'
+     Put point at the beginning of this block, mark at the end
+     (`octave-mark-block').  The block marked is the one that contains
+     point or follows point.
+
+`C-c ]'
+     Close the current block on a separate line (`octave-close-block').
+     An error is signaled if no block to close is found.
+
+`C-c f'
+     Insert a function skeleton, prompting for the function's name,
+     arguments and return values which have to be entered without parens
+     (`octave-insert-defun').
+
+`C-c C-h'
+     Search the function, operator and variable indices of all info
+     files with documentation for Octave for entries (`octave-help').
+     If used interactively, the entry is prompted for with completion.
+     If multiple matches are found, one can cycle through them using
+     the standard `,' (`Info-index-next') command of the Info reader.
+
+     The variable `octave-help-files' is a list of files to search
+     through and defaults to `'("octave")'.  If there is also an Octave
+     Local Guide with corresponding info file, say, `octave-LG', you can
+     have `octave-help' search both files by
+          (setq octave-help-files '("octave" "octave-LG"))
+
+     in one of your Emacs startup files.
+
+   A common problem is that the <RET> key does _not_ indent the line to
+where the new text should go after inserting the newline.  This is
+because the standard Emacs convention is that <RET> (aka `C-m') just
+adds a newline, whereas <LFD> (aka `C-j') adds a newline and indents
+it.  This is particularly inconvenient for users with keyboards which
+do not have a special <LFD> key at all;  in such cases, it is typically
+more convenient to use <RET> as the <LFD> key (rather than typing
+`C-j').
+
+   You can make <RET> do this by adding
+     (define-key octave-mode-map "\C-m"
+       'octave-reindent-then-newline-and-indent)
+
+to one of your Emacs startup files.  Another, more generally applicable
+solution is
+     (defun RET-behaves-as-LFD ()
+       (let ((x (key-binding "\C-j")))
+         (local-set-key "\C-m" x)))
+     (add-hook 'octave-mode-hook 'RET-behaves-as-LFD)
+
+(this works for all modes by adding to the startup hooks, without having
+to know the particular binding of <RET> in that mode!).  Similar
+considerations apply for using <M-RET> as <M-LFD>.  As Barry A. Warsaw
+<bwarsaw@cnri.reston.va.us> says in the documentation for his
+`cc-mode', "This is a very common question. `:-)' If you want this to
+be the default behavior, don't lobby me, lobby RMS!"
+
+   The following variables can be used to customize Octave mode.
+
+`octave-auto-indent'
+     Non-`nil' means auto-indent the current line after a semicolon or
+     space.  Default is `nil'.
+
+`octave-auto-newline'
+     Non-`nil' means auto-insert a newline and indent after semicolons
+     are typed.  The default value is `nil'.
+
+`octave-blink-matching-block'
+     Non-`nil' means show matching begin of block when inserting a
+     space, newline or `;' after an else or end keyword.  Default is
+     `t'.  This is an extremely useful feature for automatically
+     verifying that the keywords match--if they don't, an error message
+     is displayed.
+
+`octave-block-offset'
+     Extra indentation applied to statements in block structures.
+     Default is 2.
+
+`octave-continuation-offset'
+     Extra indentation applied to Octave continuation lines.  Default
+     is 4.
+
+`octave-continuation-string'
+     String used for Octave continuation lines.  Normally `\'.
+
+`octave-mode-startup-message'
+     If `t' (default), a startup message is displayed when Octave mode
+     is called.
+
+   If Font Lock mode is enabled, Octave mode will display
+   * strings in `font-lock-string-face'
+
+   * comments in `font-lock-comment-face'
+
+   * the Octave reserved words (such as all block keywords) and the text
+     functions (such as `cd' or `who') which are also reserved using
+     `font-lock-keyword-face'
+
+   * the builtin operators (`&&', `<>', ...) using
+     `font-lock-reference-face'
+
+   * the builtin variables (such as `prefer_column_vectors', `NaN' or
+     `LOADPATH') in `font-lock-variable-name-face'
+
+   * and the function names in function declarations in
+     `font-lock-function-name-face'.
+
+   There is also rudimentary support for Imenu (currently, function
+names can be indexed).
+
+   You can generate TAGS files for Emacs from Octave `.m' files using
+the shell script `otags' that is installed alongside your copy of
+Octave.
+
+   Customization of Octave mode can be performed by modification of the
+variable `octave-mode-hook'.  If the value of this variable is
+non-`nil', turning on Octave mode calls its value.
+
+   If you discover a problem with Octave mode, you can conveniently
+send a bug report using `C-c C-b' (`octave-submit-bug-report').  This
+automatically sets up a mail buffer with version information already
+added.  You just need to add a description of the problem, including a
+reproducible test case and send the message.
+
+
+File: octave.info,  Node: Running Octave From Within Emacs,  Next: Using the Emacs Info Reader for Octave,  Prev: Using Octave Mode,  Up: Emacs
+
+Running Octave From Within Emacs
+================================
+
+   The package `octave' provides commands for running an inferior
+Octave process in a special Emacs buffer.  Use
+     M-x run-octave
+
+to directly start an inferior Octave process.  If Emacs does not know
+about this command, add the line
+     (autoload 'run-octave "octave-inf" nil t)
+
+to your `.emacs' file.
+
+   This will start Octave in a special buffer the name of which is
+specified by the variable `inferior-octave-buffer' and defaults to
+`"*Inferior Octave*"'.  From within this buffer, you can interact with
+the inferior Octave process `as usual', i.e., by entering Octave
+commands at the prompt.  The buffer is in Inferior Octave mode, which
+is derived from the standard Comint mode, a major mode for interacting
+with an inferior interpreter.  See the documentation for `comint-mode'
+for more details, and use `C-h b' to find out about available special
+keybindings.
+
+   You can also communicate with an inferior Octave process from within
+files with Octave code (i.e., buffers in Octave mode), using the
+following commands.
+
+`C-c i l'
+     Send the current line to the inferior Octave process
+     (`octave-send-line').  With positive prefix argument N, send that
+     many lines.  If `octave-send-line-auto-forward' is non-`nil', go
+     to the next unsent code line.
+
+`C-c i b'
+     Send the current block to the inferior Octave process
+     (`octave-send-block').
+
+`C-c i f'
+     Send the current function to the inferior Octave process
+     (`octave-send-defun').
+
+`C-c i r'
+     Send the region to the inferior Octave process
+     (`octave-send-region').
+
+`C-c i s'
+     Make sure that `inferior-octave-buffer' is displayed
+     (`octave-show-process-buffer').
+
+`C-c i h'
+     Delete all windows that display the inferior Octave buffer
+     (`octave-hide-process-buffer').
+
+`C-c i k'
+     Kill the inferior Octave process and its buffer
+     (`octave-kill-process').
+
+   The effect of the commands which send code to the Octave process can
+be customized by the following variables.
+`octave-send-echo-input'
+     Non-`nil' means echo input sent to the inferior Octave process.
+     Default is `t'.
+
+`octave-send-show-buffer'
+     Non-`nil' means display the buffer running the Octave process after
+     sending a command (but without selecting it).  Default is `t'.
+
+   If you send code and there is no inferior Octave process yet, it
+will be started automatically.
+
+   The startup of the inferior Octave process is highly customizable.
+The variable `inferior-octave-startup-args' can be used for specifying
+command lines arguments to be passed to Octave on startup as a list of
+strings.  For example, to suppress the startup message and use
+`traditional' mode, set this to `'("-q" "--traditional")'.  You can
+also specify a startup file of Octave commands to be loaded on startup;
+note that these commands will not produce any visible output in the
+process buffer.  Which file to use is controlled by the variable
+`inferior-octave-startup-file'.  If this is `nil', the file
+`~/.emacs-octave' is used if it exists.
+
+   And finally, `inferior-octave-mode-hook' is run after starting the
+process and putting its buffer into Inferior Octave mode.  Hence, if you
+like the up and down arrow keys to behave in the interaction buffer as
+in the shell, and you want this buffer to use nice colors, add
+     (add-hook 'inferior-octave-mode-hook
+               (lambda ()
+                 (turn-on-font-lock)
+                 (define-key inferior-octave-mode-map [up]
+                   'comint-previous-input)
+                 (define-key inferior-octave-mode-map [down]
+                   'comint-next-input)))
+
+to your `.emacs' file.  You could also swap the roles of `C-a'
+(`beginning-of-line') and `C-c C-a' (`comint-bol') using this hook.
+
+     *Note:* If you set your Octave prompts to something different from
+     the defaults, make sure that `inferior-octave-prompt' matches them.
+     Otherwise, _nothing_ will work, because Emacs will have no idea
+     when Octave is waiting for input, or done sending output.
+
+
+File: octave.info,  Node: Using the Emacs Info Reader for Octave,  Prev: Running Octave From Within Emacs,  Up: Emacs
+
+Using the Emacs Info Reader for Octave
+======================================
+
+   You can also set up the Emacs Info reader for dealing with the
+results of Octave's `help -i'.  For this, the package `gnuserv' needs
+to be installed, which unfortunately still does not come with GNU Emacs
+(it does with XEmacs).  It can be retrieved from any GNU Emacs Lisp Code
+Directory archive, e.g.
+<ftp://ftp.cis.ohio-state.edu/pub/gnu/emacs/elisp-archive>, in the
+`packages' subdirectory.  A recent version of gnuserv is available from
+<http://www.meltin.net/hacks/emacs/src/gnuserv-3.12.2.tar.gz>.
+
+   If `gnuserv' is installed, add the lines
+     (autoload 'octave-help "octave-hlp" nil t)
+     (require 'gnuserv)
+     (gnuserv-start)
+
+to your `.emacs' file.
+
+   You can use either `plain' Emacs Info or the function `octave-help'
+as your Octave info reader (for `help -i').  In the former case, set
+the Octave variable `INFO_PROGRAM' to `"info-emacs-info"'.  The latter
+is perhaps more attractive because it allows to look up keys in the
+indices of _several_ info files related to Octave (provided that the
+Emacs variable `octave-help-files' is set correctly).  In this case,
+set `INFO_PROGRAM' to `"info-emacs-octave-help"'.
+
+   If you use Octave from within Emacs, these settings are best done in
+the `~/.emacs-octave' startup file (or the file pointed to by the Emacs
+variable `inferior-octave-startup-file').
+
+
+File: octave.info,  Node: Grammar,  Next: Copying,  Prev: Emacs,  Up: Top
+
+Grammar
+*******
+
+   Someday I hope to expand this to include a semi-formal description of
+Octave's language.
+
+* Menu:
+
+* Keywords::
+
+
+File: octave.info,  Node: Keywords,  Prev: Grammar,  Up: Grammar
+
+Keywords
+========
+
+   The following identifiers are keywords, and may not be used as
+variable or function names:
+
+     all_va_args             endwhile
+     break                   for
+     case                    function
+     catch                   global
+     continue                gplot
+     else                    gsplot
+     elseif                  if
+     end                     otherwise
+     end_try_catch           return
+     end_unwind_protect      switch
+     endfor                  try
+     endfunction             unwind_protect
+     endif                   unwind_protect_cleanup
+     endswitch               while
+
+   The following command-like functions are also speical.  They may be
+used as simple variable names, but not as formal parameters for
+functions, or as the names of structure variables.  Failed assignments
+leave them undefined (you can recover the orginal definition as a
+function using clear).
+
+     casesen       echo          load          show
+     cd            edit_history  ls            type
+     chdir         format        more          which
+     clear         help          run_history   who
+     diary         history       save          whos
+     dir           hold          set
+

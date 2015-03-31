@@ -1,0 +1,66 @@
+# Copright (c) 1998 Gordon Cichon
+# Distributed under the GNU GPL.
+
+#
+# $Author: gordon $
+# $Date: 2003/07/16 20:23:50 $
+# $Source: /sys/cvs/rna/public_html/README,v $
+# $Revision: 1.1 $
+#
+
+This is verion 0.01 of RNA, a low level object support system.
+
+It is a small database system like a LISP system, though
+without a 'eval' function. Its structure has been inspired by
+the RTL expressions inside the GNU compiler and by the object
+system of the self programming language. It is trying to reveal
+some sort common structure inside different languages expressing
+networked data structures.
+
+The first thing that annoyed me about networked data structures
+is that is quite difficult to retrieve them from a file. Just
+take a look at some U*x configuration files (f.e. sendmail.cf
+or printcap). Everybody is writing her own small parser to read
+her stuff (like me). It was my first action to create some-
+thing that is as flexible and can be read in just as easily as 
+the GCC RTL expressions (indeed, they are a pretty good idea).
+RNA is already used for reading configuration files of some
+programs that have a quite complex (non linear) configuration.
+
+In another sense, it is something very simple and archaic.
+It does not even have a garbage collector. It uses the good 
+old GNU obstacks. Just to keep it simple and transparent.
+Nevertheless, RNA is capable to express everything (correct 
+me if I'm wrong) that can be found in HTML, VRML, LISP, etc.
+It is like the biological RNA in the primeval water that 
+bootstrapped itself into life. So RNA is also something that 
+can be used to bootstrap into something (which I do not know yet).
+
+
+Projects
+========
+
+- Clean up the documentation
+- Write some configure and installation scripts
+- Write a Microsoft port
+- Add some more error handling
+
+- Invent a binary file format for RNA and write file
+    reading and a writing code
+- Invent some simple, small-and-beatiful garbage collection
+    mechanism
+- Write a simple LISP interpreter on top of RNA
+- Write parser for different other languages from and to RNA:
+    + HTML
+    + VRML
+    + LISP (need some simple interpreter, see below)
+    + perl (need some more complex interpreter, see below)
+    + Tcl
+- Write some kind of parser generator for RNA
+    (f.e. to administrate U*x configuration files :-)
+- Add useful functions to the inpterpreter that are found
+    in perl, Tcl/Tk, emacs LISP
+- Write a translator that translates all the stuff to C
+- Try to read GCC RTL, rewrite the GNU compiler backend in RNA.
+- Rewrite the GCC compiler frontend in RNA, i.e. write a parser
+    from C, C++ to RNA

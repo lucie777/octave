@@ -1,0 +1,151 @@
+# RNA 1.0 ASCII
+
+#
+# $Author: mouse-gc $
+# $Date: 2003/10/09 13:10:13 $
+# $Source: /srv/cvs/mns-mouse-gc/octave/rna/tree.rna,v $
+# $Revision: 1.12 $
+#
+
+#################################################################
+#
+# Abstract Syntax Tree
+#
+#################################################################
+
+module-tree: (Module "module-tree"
+	cpp_path_prefix="$RNA_DIR"
+	cpp_header_path_prefix="include"
+	cpp_header_path="class"
+	cpp_inline_path="inline"
+	cpp_source_path="src"
+	cpp_decl_filename="mouse-tree.h"
+	cpp_init_filename="tree-init.cc"
+	cpp_make_filename="build/Makefile.tree"
+	cpp_namespace="Mouse"
+	cpp_module_prefix="Tree"
+	cpp_lib_filename="lib/libtree.a"
+	stratego_filename="tree.stratego"
+[
+
+##################
+# Toplevel
+##################
+
+tree-program:(TypeDescriptor "tree-program" 1 "B" ["functions"] 
+	types=[tree-function]
+	at_name="Program")
+tree-function:(TypeDescriptor "tree-function" 5 "ABBAb" ["name" "incoming" "outgoing" "body" "has_vargs"] 
+	types=[tree-def tree-def tree-def tree-stmt nil]
+	at_name="FunDec" at_type="Dec")
+
+##################
+# Statements
+##################
+
+tree-stmt: (Variant "tree-stmt" [tree-seq tree-if tree-loop
+	tree-def tree-assign tree-break tree-continue tree-return])
+tree-loop: (Variant "tree-loop" [tree-while tree-for])
+
+# composite statements
+tree-seq:(TypeDescriptor "tree-seq" 1 "B" ["list"] types=[tree-stmt] at_name="Stats")
+tree-if:(TypeDescriptor "tree-if" 3 "AAA" ["cond" "tbody" "fbody"] 
+	types=[tree-expr tree-stmt tree-stmt])
+tree-while:(TypeDescriptor "tree-while" 2 "AA" ["cond" "body"]
+    types=[tree-expr tree-stmt]
+    at_name="While" at_type="Stat")
+tree-for:(TypeDescriptor "tree-for" 3 "AAA" ["var" "range" "body"]
+    types=[tree-def tree-expr tree-stmt]
+    at_name="For" at_type="Stat")
+
+# reducible composite statments
+tree-switch:(TypeDescriptor "tree-switch" 3 "ABA" ["expr" "cases" "otherwise"]
+	types=[tree-expr tree-case tree-stmt]
+	at_name="Switch" at_type="Stat")
+tree-case:(TypeDescriptor "tree-case" 2 "AA" ["value" "body"]
+	types=[value tree-stmt]
+	at_name="Case" at_type="Case")
+tree-until:(TypeDescriptor "tree-until" 2 "AA" ["body" "cond"] 
+	types=[tree-stmt tree-expr]
+	at_name="Until")
+tree-assign-multiple:(TypeDescriptor "tree-assign-multiple" 3 "BsA" 
+	["lhs" "op" "rhs"] 
+	types=[tree-expr nil tree-expr]
+	at_name="AssignMulti")
+
+# terminal statements
+tree-def:(TypeDescriptor "tree-def" 2 "sA" ["name" "type"] 
+	types=[nil type]
+	at_name="VarDef")
+tree-assign:(TypeDescriptor "tree-assign" 3 "AsA" ["lhs" "op" "rhs"] 
+	types=[tree-expr nil tree-expr]
+	at_name="Assign")
+tree-break:(TypeDescriptor "tree-break" 0 "" [] at_name="Break")
+tree-continue:(TypeDescriptor "tree-continue" 0 "" [] at_name="Continue")
+tree-return:(TypeDescriptor "tree-return" 0 "" [] at_name="Return")
+
+# alternate represenation of IF-construct
+tree-ifs:(TypeDescriptor "tree-ifs" 2 "BA" ["ifclauses" "ebody"]
+	types=[tree-elseif tree-else]
+	at_name="Ifs" at_type="Stat")
+tree-elseif:(TypeDescriptor "tree-elseif" 2 "AA" ["cond" "body"]
+	types=[tree-expr tree-stmt]
+	at_name="ElseIf" at_type="ElseIf")
+tree-else:(TypeDescriptor "tree-else" 1 "A" ["body"]
+	types=[tree-stmt]
+	at_name="Else" at_type="Else")
+
+# exception handling
+tree-unwind-protect:(TypeDescriptor "tree-unwind-protect" 2 "AA" ["body" "cleanup"]
+	types=[tree-stmt tree-stmt]
+	at_name="UnwindProtect")
+
+##################
+# Expressions
+##################
+
+tree-expr: (Variant "tree-expr" [tree-const tree-var tree-op
+	tree-subscript tree-call tree-range tree-affine tree-pick])
+
+# composite expressions
+tree-op:(TypeDescriptor "tree-op" 2 "sB" ["op" "arg"] 
+	types=[nil tree-expr]
+	at_name="DataOp")
+tree-subscript: (TypeDescriptor "tree-subscript" 2 "AB" 
+	["tensor" "subscript"] 
+	types=[tree-expr tree-expr]
+	at_name="Subscript")
+tree-call:(TypeDescriptor "tree-call" 2 "AB" 
+	["name" "arg"] 
+	types=[tree-expr tree-expr]
+	at_name="Call")
+tree-matrix:(TypeDescriptor "tree-matrix" 1 "B" ["contents"]
+	at_name="Matrix")
+tree-range:(TypeDescriptor "tree-range" 3 "AAA" 
+	["start" "increment" "finish"] 
+	types=[tree-expr tree-expr tree-expr]
+	at_name="Range")
+tree-pick:(TypeDescriptor "tree-pick" 2 "As"
+	["record" "member"]
+	types=[tree-expr nil]
+	at_name="Pick")
+
+# terminal expressions
+tree-const:(Variant "tree-const" [value])
+tree-var:(TypeDescriptor "tree-var" 1 "s" ["name"]
+            at_name="Var" at_type="Exp")
+tree-colon:(TypeDescriptor "tree-colon" 0 "" [] at_name="Colon")
+tree-affine:(TypeDescriptor "tree-affine" 3 "BBA" 
+	["c_i" "x_i" "c_0"] 
+	types=[tree-const tree-var tree-const])
+
+##################
+# Support
+##################
+
+src-info:(TypeDescriptor "src-info" 3 "sii" 
+	["filename" "row" "column"]
+	at_name="SrcInfo")
+
+])
+

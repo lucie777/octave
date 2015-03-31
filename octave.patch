@@ -1,0 +1,3966 @@
+diff -Nur octave-2.1.35/.cvsignore octave/.cvsignore
+--- octave-2.1.35/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/.cvsignore	Mon Sep 16 17:06:11 2002
+@@ -0,0 +1,15 @@
++install
++Makeconf
++Makefile
++a.out
++config.status
++configure
++config.log
++config.h
++config.h.in
++mkoctfile
++octave-bug
++octave-config
++octMakefile
++Makefrag.f77
++install-octave
+diff -Nur octave-2.1.35/Makeconf.in octave/Makeconf.in
+--- octave-2.1.35/Makeconf.in	Fri Nov  2 06:11:43 2001
++++ octave/Makeconf.in	Mon Sep  9 13:34:41 2002
+@@ -53,6 +53,22 @@
+ 
+ OCTAVE_LITE = @OCTAVE_LITE@
+ 
++
++
++# --- RNA ---
++
++RNA_INCFLAGS = @RNA_INCFLAGS@
++LIBRNA = @LIBRNA@
++RNA_SRC = @RNA_SRC@
++RNA_SUBDIR = @RNA_SUBDIR@
++
++# --- ATerm ---
++
++ATERM_LIB = @ATERM_LIB@
++ATERM_SRC = @ATERM_SRC@
++
++
++
+ STATIC_LIBS = @STATIC_LIBS@
+ 
+ SHARED_LIBS = @SHARED_LIBS@
+@@ -96,7 +112,7 @@
+ 	-I$(top_srcdir)/liboctave -I$(top_srcdir)/src \
+ 	-I$(top_srcdir)/libcruft/misc
+ endif
+-INCFLAGS = $(TMP_IF_1) $(TMP_IF_2) $(DLFCN_INCFLAGS) $(GLOB_INCFLAGS)
++INCFLAGS = $(TMP_IF_1) $(TMP_IF_2) $(DLFCN_INCFLAGS) $(GLOB_INCFLAGS) $(RNA_INCFLAGS)
+ 
+ LIBFLAGS = -L$(TOPDIR)
+ 
+@@ -155,6 +171,7 @@
+ BLAS_LIBS = @BLAS_LIBS@
+ FFTW_LIBS = @FFTW_LIBS@
+ LIBS = @LIBS@
++
+ 
+ # The arguments passed to configure.
+ config_opts = @config_opts@
+diff -Nur octave-2.1.35/configure.in octave/configure.in
+--- octave-2.1.35/configure.in	Fri Nov  2 06:11:43 2001
++++ octave/configure.in	Mon Sep  9 09:39:32 2002
+@@ -21,7 +21,7 @@
+ ### Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+ ### 02111-1307, USA. 
+ 
+-AC_REVISION($Revision: 1.309 $)
++AC_REVISION($Revision: 1.3 $)
+ AC_PREREQ(2.9)
+ AC_INIT(src/octave.cc)
+ AC_CONFIG_HEADER(config.h)
+@@ -134,6 +134,98 @@
+ LIBKPATHSEA='$(TOPDIR)/kpathsea/libkpathsea.$(LIBEXT)'
+ AC_SUBST(LIBKPATHSEA)
+ 
++
++
++### --- RNA ---
++###
++### Have the user decide whether Octave supports RNA tree interrogation.
++### Support is disabled by default. If enabled - but without argument -
++### we're bailing with an error message as long as it isn't possible for us
++### to determine the user's $prefix from within configure. Hence, the argument
++### must explicitly specify the RNA root. It would be nice to be able to
++### assume $prefix/lib and $prefix/include directories if enabled with
++### just a ``yes´´ for the argument, though.
++
++WITH_RNA=false;
++RNA_ROOT="";
++RNA_INCFLAGS=" ";
++LIBRNA=" ";
++RNA_SRC=" ";
++RNA_SUBDIR=" ";
++
++AH_TEMPLATE(WITH_RNA, [Use Gordon's RNA tree library.])
++
++AC_ARG_ENABLE(rna,
++  [  --enable-rna          use Gordon's RNA library (default is no)],
++  [case $enableval in
++     no)
++       ;;
++     yes)
++       AC_MSG_ERROR([Missing RNA root directory.])
++       ;;
++     *)
++       WITH_RNA=true;
++       RNA_ROOT=$enableval;
++       ;;
++   esac], [])
++
++if $WITH_RNA; then
++
++  RNA_SUBDIR="rna";
++
++  RNA_INCFLAGS="-I\$(TOPDIR)/rna/include";
++  RNA_INCFLAGS="$RNA_INCFLAGS -I\$(TOPDIR)/rna/include/class";
++  RNA_INCFLAGS="$RNA_INCFLAGS -I\$(TOPDIR)/rna/include/inline";
++  RNA_INCFLAGS="$RNA_INCFLAGS -I$RNA_ROOT/include";
++
++  LIBRNA="\$(TOPDIR)/rna/lib/libtree.a";
++  LIBRNA="$LIBRNA \$(TOPDIR)/rna/lib/libtype.a";
++  LIBRNA="$LIBRNA \$(TOPDIR)/rna/lib/libvalue.a";
++  LIBRNA="$LIBRNA $RNA_ROOT/lib/librna.a";
++
++  RNA_SRC="cp-air.cc cp-dump.cc cp-pt.cc cp.cc";
++
++  AC_DEFINE(WITH_RNA, 1)
++fi
++
++AC_SUBST(RNA_INCFLAGS)
++AC_SUBST(LIBRNA)
++AC_SUBST(RNA_SRC)
++AC_SUBST(RNA_SUBDIR)
++
++### --- ATerm ---
++###
++### Support for ATerm is only included if RNA is available.
++
++WITH_ATERM=false;
++ATERM_LIB=" ";
++ATERM_SRC=" ";
++
++AH_TEMPLATE(WITH_ATERM, [Use the CWI ATerm library.])
++
++AC_ARG_ENABLE(aterm,
++  [  --enable-aterm      use CWI ATerm library (default is no)],
++  [if test "$enableval" = yes; then WITH_ATERM=true; fi], [])
++
++if $WITH_ATERM; then
++
++  if $WITH_RNA; then
++
++    ATERM_LIB="-lATerm";
++    ATERM_SRC=" ";  ### currently cp.cc cp-air.cc (as in RNA_SRC)
++
++    AC_DEFINE(WITH_ATERM, 1)
++  else
++    AC_MSG_ERROR([The use of ATerm requires that RNA be enabled also.])
++  fi
++
++fi
++
++AC_SUBST(ATERM_LIB)
++AC_SUBST(ATERM_SRC)
++
++
++
+ ### Make it possible to have Octave's array and matrix classes do bounds
+ ### checking on element references.  This slows some operations down a
+ ### bit, so it is turned off by default.
+@@ -1397,6 +1489,8 @@
+   Dynamic Linking (dlopen/dlsym):          $WITH_DL
+   Dynamic Linking (shl_load/shl_findsym):  $WITH_SHL
+   Include support for GNU readline:        $USE_READLINE
++  Include support for Gordon's RNA lib:    $WITH_RNA
++  Include support for CWI ATerm library:   $WITH_ATERM
+ ])
+ 
+ warn_msg_printed=false
+diff -Nur octave-2.1.35/dlfcn/.cvsignore octave/dlfcn/.cvsignore
+--- octave-2.1.35/dlfcn/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/dlfcn/.cvsignore	Tue Apr  2 08:09:02 2002
+@@ -0,0 +1 @@
++Makefile
+\ No newline at end of file
+diff -Nur octave-2.1.35/doc/.cvsignore octave/doc/.cvsignore
+--- octave-2.1.35/doc/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/doc/.cvsignore	Tue Apr  2 08:08:46 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/doc/faq/.cvsignore octave/doc/faq/.cvsignore
+--- octave-2.1.35/doc/faq/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/doc/faq/.cvsignore	Tue Apr  2 08:08:46 2002
+@@ -0,0 +1,5 @@
++Makefile
++*.html
++*.info
++*.cp *.fn *.ky *.pg *.ps *.tp *.vr
++*.aux *.cps *.dvi *.log *.toc
+\ No newline at end of file
+diff -Nur octave-2.1.35/doc/interpreter/.cvsignore octave/doc/interpreter/.cvsignore
+--- octave-2.1.35/doc/interpreter/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/doc/interpreter/.cvsignore	Tue Apr  2 08:08:46 2002
+@@ -0,0 +1,4 @@
++Makefile
++*.html
++*.texi
++munge-texi
+\ No newline at end of file
+diff -Nur octave-2.1.35/doc/liboctave/.cvsignore octave/doc/liboctave/.cvsignore
+--- octave-2.1.35/doc/liboctave/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/doc/liboctave/.cvsignore	Tue Apr  2 08:08:46 2002
+@@ -0,0 +1,20 @@
++Makefile
++*.html
++liboctave.aux
++liboctave.cps
++liboctave.dvi
++liboctave.fns
++liboctave.log
++liboctave.toc
++liboctave.info
++liboctave.cp
++liboctave.fn
++liboctave.ky
++liboctave.op
++liboctave.pg
++liboctave.ps
++liboctave.tp
++liboctave.vr
++liboctave.info-1
++liboctave.info-2
++liboctave.info-3
+diff -Nur octave-2.1.35/doc/refcard/.cvsignore octave/doc/refcard/.cvsignore
+--- octave-2.1.35/doc/refcard/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/doc/refcard/.cvsignore	Tue Apr  2 08:08:46 2002
+@@ -0,0 +1,10 @@
++Makefile
++refcard-a4.ps
++refcard-a4.dvi
++refcard-a4.log
++refcard-letter.dvi
++refcard-letter.log
++refcard-legal.dvi
++refcard-legal.log
++refcard-letter.ps
++refcard-legal.ps
+diff -Nur octave-2.1.35/emacs/.cvsignore octave/emacs/.cvsignore
+--- octave-2.1.35/emacs/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/emacs/.cvsignore	Tue Apr  2 08:09:03 2002
+@@ -0,0 +1 @@
++Makefile
+\ No newline at end of file
+diff -Nur octave-2.1.35/examples/.cvsignore octave/examples/.cvsignore
+--- octave-2.1.35/examples/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/examples/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1 @@
++Makefile
+\ No newline at end of file
+diff -Nur octave-2.1.35/glob/.cvsignore octave/glob/.cvsignore
+--- octave-2.1.35/glob/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/glob/.cvsignore	Tue Apr  2 08:08:52 2002
+@@ -0,0 +1,4 @@
++Makefile
++config.status
++configure
++config.log
+diff -Nur octave-2.1.35/kpathsea/.cvsignore octave/kpathsea/.cvsignore
+--- octave-2.1.35/kpathsea/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/kpathsea/.cvsignore	Sat Oct  5 10:09:14 2002
+@@ -0,0 +1,24 @@
++Makefile
++*.lo
++*.1
++kpathsea.info
++config.status
++sedscript
++libkpathsea.la
++kpsewhich
++STATIC
++config.log
++access
++kpsestat
++texmf.cnf
++texmf.sed
++stamp-paths
++stamp-auto
++c-auto.h
++paths.h
++kpathsea.info-1
++kpathsea.info-2
++kpathsea.info-3
++kpathsea.info-4
++readlink
++configure
+diff -Nur octave-2.1.35/libcruft/.cvsignore octave/libcruft/.cvsignore
+--- octave-2.1.35/libcruft/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++Makerules
+diff -Nur octave-2.1.35/libcruft/amos/.cvsignore octave/libcruft/amos/.cvsignore
+--- octave-2.1.35/libcruft/amos/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/amos/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/blas/.cvsignore octave/libcruft/blas/.cvsignore
+--- octave-2.1.35/libcruft/blas/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/blas/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/blas-xtra/.cvsignore octave/libcruft/blas-xtra/.cvsignore
+--- octave-2.1.35/libcruft/blas-xtra/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/blas-xtra/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/dassl/.cvsignore octave/libcruft/dassl/.cvsignore
+--- octave-2.1.35/libcruft/dassl/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/dassl/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/fftpack/.cvsignore octave/libcruft/fftpack/.cvsignore
+--- octave-2.1.35/libcruft/fftpack/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/fftpack/.cvsignore	Tue Apr  2 08:09:10 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/lapack/.cvsignore octave/libcruft/lapack/.cvsignore
+--- octave-2.1.35/libcruft/lapack/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/lapack/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/lapack-xtra/.cvsignore octave/libcruft/lapack-xtra/.cvsignore
+--- octave-2.1.35/libcruft/lapack-xtra/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/lapack-xtra/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/linpack/.cvsignore octave/libcruft/linpack/.cvsignore
+--- octave-2.1.35/libcruft/linpack/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/linpack/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/minpack/.cvsignore octave/libcruft/minpack/.cvsignore
+--- octave-2.1.35/libcruft/minpack/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/minpack/.cvsignore	Tue Apr  2 08:09:10 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/misc/.cvsignore octave/libcruft/misc/.cvsignore
+--- octave-2.1.35/libcruft/misc/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/misc/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/odepack/.cvsignore octave/libcruft/odepack/.cvsignore
+--- octave-2.1.35/libcruft/odepack/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/odepack/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/ordered-qz/.cvsignore octave/libcruft/ordered-qz/.cvsignore
+--- octave-2.1.35/libcruft/ordered-qz/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/ordered-qz/.cvsignore	Tue Apr  2 08:09:09 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/quadpack/.cvsignore octave/libcruft/quadpack/.cvsignore
+--- octave-2.1.35/libcruft/quadpack/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/quadpack/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/ranlib/.cvsignore octave/libcruft/ranlib/.cvsignore
+--- octave-2.1.35/libcruft/ranlib/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/ranlib/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/slatec-err/.cvsignore octave/libcruft/slatec-err/.cvsignore
+--- octave-2.1.35/libcruft/slatec-err/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/slatec-err/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/slatec-fn/.cvsignore octave/libcruft/slatec-fn/.cvsignore
+--- octave-2.1.35/libcruft/slatec-fn/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/slatec-fn/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/libcruft/villad/.cvsignore octave/libcruft/villad/.cvsignore
+--- octave-2.1.35/libcruft/villad/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/libcruft/villad/.cvsignore	Tue Apr  2 08:09:12 2002
+@@ -0,0 +1,2 @@
++Makefile
++pic
+diff -Nur octave-2.1.35/liboctave/.cvsignore octave/liboctave/.cvsignore
+--- octave-2.1.35/liboctave/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/liboctave/.cvsignore	Tue Apr  2 08:09:01 2002
+@@ -0,0 +1,2 @@
++Makefile
++*.d
+\ No newline at end of file
+diff -Nur octave-2.1.35/mouse/compile.sh octave/mouse/compile.sh
+--- octave-2.1.35/mouse/compile.sh	Thu Jan  1 01:00:00 1970
++++ octave/mouse/compile.sh	Thu Sep 26 10:07:35 2002
+@@ -0,0 +1,34 @@
++{
++    export CFLAGS="-g -O0"
++    export CXXFLAGS="-g -O0"
++    export FFLAGS="-g"
++    export LDFLAGS="-g"
++
++    if [ $make_clean = yes ] ; then
++	if [ -f Makefile ] ; then
++	    run_prg make maintainer-clean
++	    rm Makefile
++	fi
++	if [ -f configure ] ; then
++	    rm configure
++	fi
++    fi
++
++    if [ ! -f configure ] ; then
++	run_prg autogen.sh
++    fi
++
++    if [ ! -f Makefile ] ; then
++	run_prg ./configure --prefix=$PWD/install \
++	    --enable-rna=$RNA_HOME --enable-aterm \
++	    --disable-dl --disable-shl --enable-static \
++	    --disable-readline
++    fi
++
++    run_prg make
++    
++    if [ ! -d $PWD/install -o $make_clean = yes ] ; then
++	mkdir_if_necessary $PWD/install
++	run_prg make install
++    fi
++}
+diff -Nur octave-2.1.35/octMakefile.in octave/octMakefile.in
+--- octave-2.1.35/octMakefile.in	Fri Nov  2 15:26:18 2001
++++ octave/octMakefile.in	Mon Sep  9 13:34:41 2002
+@@ -35,7 +35,8 @@
+ 
+ # Subdirectories in which to run `make all'.
+ SUBDIRS = @PLPLOT_DIR@ @DLFCN_DIR@ @GLOB_DIR@ \
+-	kpathsea libcruft liboctave scripts doc examples
++	kpathsea libcruft liboctave scripts doc examples \
++    $(RNA_SUBDIR)
+ 
+ ALL_SUBDIRS = $(SUBDIRS) src
+ 
+diff -Nur octave-2.1.35/rna/.cvsignore octave/rna/.cvsignore
+--- octave-2.1.35/rna/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/rna/.cvsignore	Thu Sep 12 17:27:04 2002
+@@ -0,0 +1,4 @@
++include
++src
++build
++lib
+diff -Nur octave-2.1.35/rna/Makefile octave/rna/Makefile
+--- octave-2.1.35/rna/Makefile	Thu Jan  1 01:00:00 1970
++++ octave/rna/Makefile	Thu Sep 26 10:31:52 2002
+@@ -0,0 +1,42 @@
++### We should really include this into the main configuration run ...
++
++TOPDIR		=	..
++
++include $(TOPDIR)/Makeconf
++
++GENCLASS    =   $(RNA_HOME)/bin/genclass
++
++RNA_INCLUDE =	-i tree.rna -i type.rna -i value.rna
++
++RNA_DIRS    =   build include lib src include/class include/inline
++RNA_FILES	=	tree type value
++
++RNA_LIBS	=	$(RNA_FILES:%=lib/lib%.a)
++
++MAKEFILES	=	$(RNA_FILES:%=build/Makefile.%)
++
++
++all:	$(RNA_DIRS) $(RNA_LIBS)
++
++#$(MAKEFILES):	$(RNA_DIRS)
++$(RNA_LIBS):	$(MAKEFILES)
++
++$(RNA_DIRS):
++	mkdir -p $@
++
++
++.PHONY:	clean
++
++clean:
++	@for dir in $(RNA_DIRS); do \
++		rm -rf $$dir ;\
++	done
++
++build/Makefile.%: %.rna
++	cd build ;\
++	RNA_DIR=.. $(GENCLASS) $(RNA_FILES:%=-i ../%.rna) -v ../$< ;\
++	cd ..
++
++lib/lib%.a: build/Makefile.%
++	RNA_DIR=.. RNAFLAGS=-I$(RNA_HOME)/include \
++	$(MAKE) -C build -f ../$< ../$@
+diff -Nur octave-2.1.35/rna/tree.rna octave/rna/tree.rna
+--- octave-2.1.35/rna/tree.rna	Thu Jan  1 01:00:00 1970
++++ octave/rna/tree.rna	Mon Dec  2 16:55:25 2002
+@@ -0,0 +1,148 @@
++# RNA 1.0 ASCII
++
++#
++# $Author: mouse-gc $
++# $Date: 2002/12/02 15:55:25 $
++# $Source: /home/cvs/octave/rna/tree.rna,v $
++# $Revision: 1.9 $
++#
++
++#################################################################
++#
++# Abstract Syntax Tree
++#
++#################################################################
++
++module-tree: (Module "module-tree"
++	cpp_path_prefix="$RNA_DIR"
++	cpp_header_path_prefix="include"
++	cpp_header_path="class"
++	cpp_inline_path="inline"
++	cpp_source_path="src"
++	cpp_decl_filename="mouse-tree.h"
++	cpp_init_filename="tree-init.cc"
++	cpp_make_filename="build/Makefile.tree"
++	cpp_namespace="Mouse"
++	cpp_module_prefix="Tree"
++	cpp_lib_filename="lib/libtree.a"
++[
++
++##################
++# Toplevel
++##################
++
++tree-program:(TypeDescriptor "tree-program" 1 "B" ["functions"] 
++	types=[tree-function]
++	at_name="Program")
++tree-function:(TypeDescriptor "tree-function" 4 "ABBA" ["name" "incoming" "outgoing" "body"] 
++	types=[tree-def tree-def tree-def tree-stmt]
++	at_name="FunDec" at_type="Dec")
++
++##################
++# Statements
++##################
++
++tree-stmt: (Variant "tree-stmt" [tree-seq tree-if tree-loop
++	tree-def tree-assign tree-break tree-continue tree-return])
++tree-loop: (Variant "tree-loop" [tree-while tree-for])
++
++# composite statements
++tree-seq:(TypeDescriptor "tree-seq" 1 "B" ["list"] types=[tree-stmt] at_name="Stats")
++tree-if:(TypeDescriptor "tree-if" 3 "AAA" ["cond" "tbody" "fbody"] 
++	types=[tree-expr tree-stmt tree-stmt])
++tree-while:(TypeDescriptor "tree-while" 2 "AA" ["cond" "body"]
++    types=[tree-expr tree-stmt]
++    at_name="While" at_type="Stat")
++tree-for:(TypeDescriptor "tree-for" 3 "AAA" ["var" "range" "body"]
++    types=[tree-def tree-expr tree-stmt]
++    at_name="For" at_type="Stat")
++
++# reducible composite statments
++tree-switch:(TypeDescriptor "tree-switch" 3 "ABA" ["expr" "cases" "otherwise"]
++	types=[tree-expr tree-case tree-stmt]
++	at_name="Switch" at_type="Stat")
++tree-case:(TypeDescriptor "tree-case" 2 "AA" ["value" "body"]
++	types=[value tree-stmt]
++	at_name="Case" at_type="Case")
++tree-until:(TypeDescriptor "tree-until" 2 "AA" ["body" "cond"] 
++	types=[tree-stmt tree-expr]
++	at_name="Until")
++tree-assign-multiple:(TypeDescriptor "tree-assign-multiple" 3 "BsA" 
++	["lhs" "op" "rhs"] 
++	types=[tree-expr nil tree-expr]
++	at_name="AssignMulti")
++
++# terminal statements
++tree-def:(TypeDescriptor "tree-def" 1 "s" ["name"] at_name="VarDef")
++tree-assign:(TypeDescriptor "tree-assign" 3 "AsA" ["lhs" "op" "rhs"] 
++	types=[tree-expr nil tree-expr]
++	at_name="Assign")
++tree-break:(TypeDescriptor "tree-break" 0 "" [] at_name="Break")
++tree-continue:(TypeDescriptor "tree-continue" 0 "" [] at_name="Continue")
++tree-return:(TypeDescriptor "tree-return" 0 "" [] at_name="Return")
++
++# alternate represenation of IF-construct
++tree-ifs:(TypeDescriptor "tree-ifs" 2 "BA" ["ifclauses" "ebody"]
++	types=[tree-elseif tree-else]
++	at_name="Ifs" at_type="Stat")
++tree-elseif:(TypeDescriptor "tree-elseif" 2 "AA" ["cond" "body"]
++	types=[tree-expr tree-stmt]
++	at_name="ElseIf" at_type="ElseIf")
++tree-else:(TypeDescriptor "tree-else" 1 "A" ["body"]
++	types=[tree-stmt]
++	at_name="Else" at_type="Else")
++
++# exception handling
++tree-unwind-protect:(TypeDescriptor "tree-unwind-protect" 2 "AA" ["body" "cleanup"]
++	types=[tree-stmt tree-stmt]
++	at_name="UnwindProtect")
++
++##################
++# Expressions
++##################
++
++tree-expr: (Variant "tree-expr" [tree-const tree-var tree-op
++	tree-subscript tree-call tree-range tree-affine tree-pick])
++
++# composite expressions
++tree-op:(TypeDescriptor "tree-op" 2 "sB" ["op" "arg"] 
++	types=[nil tree-expr]
++	at_name="DataOp")
++tree-subscript: (TypeDescriptor "tree-subscript" 2 "AB" 
++	["tensor" "subscript"] 
++	types=[tree-expr tree-expr]
++	at_name="Subscript")
++tree-call:(TypeDescriptor "tree-call" 2 "AB" 
++	["name" "arg"] 
++	types=[tree-expr tree-expr]
++	at_name="Call")
++tree-matrix:(TypeDescriptor "tree-matrix" 1 "B" ["contents"]
++	at_name="Matrix")
++tree-range:(TypeDescriptor "tree-range" 3 "AAA" 
++	["start" "increment" "finish"] 
++	types=[tree-expr tree-expr tree-expr]
++	at_name="Range")
++tree-pick:(TypeDescriptor "tree-pick" 2 "As"
++	["record" "member"]
++	types=[tree-expr nil]
++	at_name="Pick")
++
++# terminal expressions
++tree-const:(Variant "tree-const" [value])
++tree-var:(TypeDescriptor "tree-var" 1 "s" ["name"]
++            at_name="Var" at_type="Exp")
++tree-colon:(TypeDescriptor "tree-colon" 0 "" [] at_name="Colon")
++tree-affine:(TypeDescriptor "tree-affine" 3 "BBA" 
++	["c_i" "x_i" "c_0"] 
++	types=[tree-const tree-var tree-const])
++
++##################
++# Support
++##################
++
++src-info:(TypeDescriptor "src-info" 3 "sii" 
++	["filename" "row" "column"]
++	at_name="SrcInfo")
++
++])
++
+diff -Nur octave-2.1.35/rna/type.rna octave/rna/type.rna
+--- octave-2.1.35/rna/type.rna	Thu Jan  1 01:00:00 1970
++++ octave/rna/type.rna	Fri Sep 13 17:55:03 2002
+@@ -0,0 +1,75 @@
++# RNA 1.0 ASCII
++
++#
++# $Author: mouse-gc $
++# $Date: 2002/09/13 16:55:03 $
++# $Source: /home/cvs/octave/rna/type.rna,v $
++# $Revision: 1.2 $
++#
++
++#################################################################
++#
++# Types
++#
++#################################################################
++
++module-type: (Module "module-type" 
++	cpp_path_prefix="$RNA_DIR"
++	cpp_header_path_prefix="include"
++	cpp_header_path="class"
++	cpp_inline_path="inline"
++	cpp_source_path="src"
++	cpp_decl_filename="mouse-type.h"
++	cpp_init_filename="type-init.cc"
++	cpp_make_filename="build/Makefile.type"
++	cpp_namespace="Mouse"
++	cpp_module_prefix="Type"
++	cpp_lib_filename="lib/libtype.a"
++[
++
++type-unknown: (TypeDescriptor "type-unknown" 0 "" [] at_name="TypeUnknown")
++
++type-function: (TypeDescriptor "type-function" 2 "BB" 
++	["outgoing" "incoming"] 
++	types=[type type]
++	at_name="TypeFunction")
++
++type-struct: (TypeDescriptor "type-struct" 1 "B" ["members"] 
++	types=[member]
++	at_name="TypeStruct")
++member: (TypeDescriptor "member" 2 "sA" ["name" "type"] 
++	types=[nil type]
++	at_name="Member")
++
++type-string: (TypeDescriptor "type-string" 0 "" [] at_name="TypeString")
++
++type-bool: (TypeDescriptor "type-bool" 0 "" [] at_name="TypeBool")
++type-int: (TypeDescriptor "type-int" 2 "bi" 
++	["sign" "width"]
++	at_name="TypeInt")
++type-fixed: (TypeDescriptor "type-fixed" 3 "bii" 
++	["sign" "width" "fraction"]
++	at_name="TypeFixed")
++type-float: (TypeDescriptor "type-float" 1 "i" ["width"]
++	at_name="TypeFloat")
++type-complex: (TypeDescriptor "type-complex" 1 "A" ["type"] 
++	types=[type] at_name="TypeComplex")
++type-vector: (TypeDescriptor "type-vector" 2 "AA" 
++	["type" "dimension"] types=[type dimension]
++	at_name="TypeVector")
++type-tensor: (TypeDescriptor "type-tensor" 2 "AB" 
++	["type" "dimensions"] types=[type dimension]
++	at_name="TypeTensor")
++
++type-scalar: (Variant "type-scalar" [type-int type-fixed type-float])
++
++type:(Variant "type" [type-unknown type-function type-struct type-string
++	type-bool type-int type-fixed type-float type-complex type-vector type-tensor])
++
++dimension-unknown: (TypeDescriptor "dimension-unknown" 0 "" []
++	at_name="DimensionUnknown")
++dimension-known: (TypeDescriptor "dimension-known" 1 "i" ["size"]
++	at_name="DimensionKnown")
++dimension:(Variant "dimension" [dimension-known dimension-unknown])
++
++])
+diff -Nur octave-2.1.35/rna/value.rna octave/rna/value.rna
+--- octave-2.1.35/rna/value.rna	Thu Jan  1 01:00:00 1970
++++ octave/rna/value.rna	Fri Sep 13 17:55:03 2002
+@@ -0,0 +1,64 @@
++# RNA 1.0 ASCII
++
++#
++# $Author: mouse-gc $
++# $Date: 2002/09/13 16:55:03 $
++# $Source: /home/cvs/octave/rna/value.rna,v $
++# $Revision: 1.6 $
++#
++
++#################################################################
++#
++# Values for Constants and Immediates
++#
++#################################################################
++
++module-value: (Module "module-value" 
++	cpp_path_prefix="$RNA_DIR"
++	cpp_header_path_prefix="include"
++	cpp_header_path="class"
++	cpp_inline_path="inline"
++	cpp_source_path="src"
++	cpp_decl_filename="mouse-value.h"
++	cpp_init_filename="value-init.cc"
++	cpp_make_filename="build/Makefile.value"
++	cpp_namespace="Mouse"
++	cpp_module_prefix="Value"
++	cpp_lib_filename="lib/libvalue.a"
++[
++
++value-function: (TypeDescriptor "value-function" 1 "A" ["def"] 
++	types=[tree-function]
++	at_name="Func" at_type="Exp")
++value-struct: (TypeDescriptor "value-struct" 1 "B" ["elements"] 
++	types=[element] at_name="Struct")
++element: (TypeDescriptor "element" 2 "sA" ["name" "value"] 
++	types=[nil value]
++	at_name="Element")
++value-string: (TypeDescriptor "value-string" 1 "s" ["value"]
++	at_name="String")
++
++value-bool: (TypeDescriptor "value-bool" 1 "b" ["value"] at_name="Bool")
++value-int: (TypeDescriptor "value-int" 1 "i" ["value"]
++            at_name="Int" at_type="Exp")
++value-fixed: (TypeDescriptor "value-fixed" 1 "i" ["value"] at_name="Fixed")
++value-float: (TypeDescriptor "value-float" 1 "f" ["value"] at_name="Float")
++value-complex: (TypeDescriptor "value-complex" 2 "AA" ["real" "img"]
++                types=[value value]
++                at_name="Complex" at_type="Exp")
++value-vector: (TypeDescriptor "value-vector" 1 "B" ["values"] 
++	types=[value]
++	at_name="Vector")
++value-matrix: (TypeDescriptor "value-matrix" 1 "B" ["rows"] 
++	types=[value-vector]
++	at_name="Matrix")
++value-tensor: (TypeDescriptor "value-tensor" 1 "B" 
++	["values"] 
++	types=[value]
++	at_name="Tensor")
++
++value: (Variant "value" [value-function value-struct
++	value-bool value-int value-fixed value-float value-complex 
++	value-vector value-matrix value-tensor])
++
++])
+diff -Nur octave-2.1.35/scripts/.cvsignore octave/scripts/.cvsignore
+--- octave-2.1.35/scripts/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/.cvsignore	Thu Sep 19 18:22:06 2002
+@@ -0,0 +1,8 @@
++Makefile
++config.status
++configure
++config.log
++gethelp
++config.h.in
++DOCSTRINGS.t
++DOCSTRINGS
+diff -Nur octave-2.1.35/scripts/audio/.cvsignore octave/scripts/audio/.cvsignore
+--- octave-2.1.35/scripts/audio/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/audio/.cvsignore	Tue Apr  2 08:09:07 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/control/.cvsignore octave/scripts/control/.cvsignore
+--- octave-2.1.35/scripts/control/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/control/.cvsignore	Tue Apr  2 08:09:05 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/control/base/.cvsignore octave/scripts/control/base/.cvsignore
+--- octave-2.1.35/scripts/control/base/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/control/base/.cvsignore	Tue Apr  2 08:09:06 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/control/hinf/.cvsignore octave/scripts/control/hinf/.cvsignore
+--- octave-2.1.35/scripts/control/hinf/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/control/hinf/.cvsignore	Tue Apr  2 08:09:06 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/control/obsolete/.cvsignore octave/scripts/control/obsolete/.cvsignore
+--- octave-2.1.35/scripts/control/obsolete/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/control/obsolete/.cvsignore	Tue Apr  2 08:09:07 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/control/system/.cvsignore octave/scripts/control/system/.cvsignore
+--- octave-2.1.35/scripts/control/system/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/control/system/.cvsignore	Tue Apr  2 08:09:07 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/control/util/.cvsignore octave/scripts/control/util/.cvsignore
+--- octave-2.1.35/scripts/control/util/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/control/util/.cvsignore	Tue Apr  2 08:09:06 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/elfun/.cvsignore octave/scripts/elfun/.cvsignore
+--- octave-2.1.35/scripts/elfun/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/elfun/.cvsignore	Tue Apr  2 08:09:07 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/finance/.cvsignore octave/scripts/finance/.cvsignore
+--- octave-2.1.35/scripts/finance/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/finance/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/general/.cvsignore octave/scripts/general/.cvsignore
+--- octave-2.1.35/scripts/general/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/general/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/image/.cvsignore octave/scripts/image/.cvsignore
+--- octave-2.1.35/scripts/image/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/image/.cvsignore	Tue Apr  2 08:09:07 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/io/.cvsignore octave/scripts/io/.cvsignore
+--- octave-2.1.35/scripts/io/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/io/.cvsignore	Tue Apr  2 08:09:03 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/linear-algebra/.cvsignore octave/scripts/linear-algebra/.cvsignore
+--- octave-2.1.35/scripts/linear-algebra/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/linear-algebra/.cvsignore	Tue Apr  2 08:09:05 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/miscellaneous/.cvsignore octave/scripts/miscellaneous/.cvsignore
+--- octave-2.1.35/scripts/miscellaneous/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/miscellaneous/.cvsignore	Tue Apr  2 08:09:07 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/plot/.cvsignore octave/scripts/plot/.cvsignore
+--- octave-2.1.35/scripts/plot/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/plot/.cvsignore	Tue Apr  2 08:09:04 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/polynomial/.cvsignore octave/scripts/polynomial/.cvsignore
+--- octave-2.1.35/scripts/polynomial/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/polynomial/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/quaternion/.cvsignore octave/scripts/quaternion/.cvsignore
+--- octave-2.1.35/scripts/quaternion/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/quaternion/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/set/.cvsignore octave/scripts/set/.cvsignore
+--- octave-2.1.35/scripts/set/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/set/.cvsignore	Tue Apr  2 08:09:03 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/signal/.cvsignore octave/scripts/signal/.cvsignore
+--- octave-2.1.35/scripts/signal/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/signal/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/specfun/.cvsignore octave/scripts/specfun/.cvsignore
+--- octave-2.1.35/scripts/specfun/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/specfun/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/special-matrix/.cvsignore octave/scripts/special-matrix/.cvsignore
+--- octave-2.1.35/scripts/special-matrix/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/special-matrix/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/startup/.cvsignore octave/scripts/startup/.cvsignore
+--- octave-2.1.35/scripts/startup/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/startup/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/statistics/.cvsignore octave/scripts/statistics/.cvsignore
+--- octave-2.1.35/scripts/statistics/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/statistics/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/statistics/base/.cvsignore octave/scripts/statistics/base/.cvsignore
+--- octave-2.1.35/scripts/statistics/base/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/statistics/base/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/statistics/distributions/.cvsignore octave/scripts/statistics/distributions/.cvsignore
+--- octave-2.1.35/scripts/statistics/distributions/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/statistics/distributions/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/statistics/models/.cvsignore octave/scripts/statistics/models/.cvsignore
+--- octave-2.1.35/scripts/statistics/models/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/statistics/models/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/statistics/tests/.cvsignore octave/scripts/statistics/tests/.cvsignore
+--- octave-2.1.35/scripts/statistics/tests/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/statistics/tests/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/strings/.cvsignore octave/scripts/strings/.cvsignore
+--- octave-2.1.35/scripts/strings/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/strings/.cvsignore	Tue Apr  2 08:09:08 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/scripts/time/.cvsignore octave/scripts/time/.cvsignore
+--- octave-2.1.35/scripts/time/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/scripts/time/.cvsignore	Tue Apr  2 08:09:04 2002
+@@ -0,0 +1 @@
++Makefile
+diff -Nur octave-2.1.35/src/.cvsignore octave/src/.cvsignore
+--- octave-2.1.35/src/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/src/.cvsignore	Thu Sep 19 18:21:57 2002
+@@ -0,0 +1,18 @@
++Makefile
++*.d *.df
++gordon.*
++y.* parse.cc lex.cc
++oct-gperf.h
++doc-files
++gendoc
++gendoc.cc
++var-files
++octave
++ops.cc
++stamp-prereq
++defaults.h
++stamp-oct-links
++builtins.cc
++oct-conf.h
++def-files
++DOCSTRINGS
+diff -Nur octave-2.1.35/src/Makefile.in octave/src/Makefile.in
+--- octave-2.1.35/src/Makefile.in	Fri Nov  2 06:12:00 2001
++++ octave/src/Makefile.in	Mon Sep  9 13:34:41 2002
+@@ -78,7 +78,8 @@
+ 	pt-pr-code.h pt-select.h pt-stmt.h pt-unop.h pt-walk.h \
+ 
+ INCLUDES := BaseSLList.h Cell.h DLList.h Map.h Pix.h SLList.h \
+-	SLStack.h Stack.h c-file-ptr-stream.h comment-list.h defun-dld.h \
++	SLStack.h Stack.h c-file-ptr-stream.h comment-list.h \
++	cp.h cp-air.h cp-dump.h defun-dld.h \
+ 	defun-int.h defun.h dirfns.h dynamic-ld.h error.h file-io.h \
+ 	fn-cache.h gripes.h help.h input.h lex.h load-save.h \
+ 	oct-fstrm.h oct-hist.h oct-iostrm.h oct-map.h oct-obj.h \
+@@ -133,7 +134,9 @@
+ 	symtab.cc syscalls.cc sysdep.cc system.c token.cc toplev.cc \
+ 	unwind-prot.cc utils.cc variables.cc xdiv.cc xpow.cc \
+ 	$(OV_SRC) \
+-	$(PT_SRC)
++	$(PT_SRC) \
++    $(RNA_SRC) \
++    $(ATERM_SRC)
+ 
+ SOURCES := $(DIST_SRC) $(OP_SRC) $(TI_SRC)
+ 
+@@ -188,7 +191,7 @@
+   -L$(TOPDIR)/src $(RLD_FLAG)
+ 
+ OCTAVE_LIBS = $(LIBOCTINTERP) $(LIBOCTAVE) $(SPECIAL_MATH_LIB) $(LIBCRUFT) \
+-  $(LIBPLPLOT) $(LIBKPATHSEA) $(LIBGLOB) $(LIBDLFCN)
++  $(LIBPLPLOT) $(LIBKPATHSEA) $(LIBGLOB) $(LIBDLFCN) $(LIBRNA) $(ATERM_LIB)
+ 
+ DISTFILES = Makefile.in ChangeLog mkdefs mkops mkgendoc \
+ 	DOCSTRINGS mkbuiltins mk-oct-links \
+diff -Nur octave-2.1.35/src/cp-air.cc octave/src/cp-air.cc
+--- octave-2.1.35/src/cp-air.cc	Thu Jan  1 01:00:00 1970
++++ octave/src/cp-air.cc	Fri Sep 13 17:23:24 2002
+@@ -0,0 +1,282 @@
++// -*-c++-*-
++
++// Gordon's source file
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#if defined(WITH_ATERM)
++extern "C" {
++#include <aterm2.h>
++}
++#endif  // WITH_ATERM
++
++#include "ov-usr-fcn.h"
++
++#include "cp.h"
++#include "cp-air.h"
++
++
++#if defined(WITH_ATERM)
++
++typedef ATbool (* aterm_output_fun) (ATerm, FILE *);
++
++ATerm make_aterm (RNA::Rna, RNA::Type, RNA::IntContext *);
++ATerm make_composite_aterm (RNA::Rna, RNA::Type, RNA::IntContext *);
++
++#endif  // WITH_ATERM
++
++
++RNA::Context * compiler_air::air = 0;
++
++void
++compiler_air::Initialize (RNA::Context * context)
++{
++    air = context;
++}
++
++compiler_air::output_format
++compiler_air::str2fmt(const char * format_string)
++{
++    compiler_air::output_format format;
++
++    if ( strcmp(format_string, "rna") == 0 )
++        format = compiler_air::FMT_RNA;
++    else if ( strcmp(format_string, "aterm_text") == 0 )
++        format = compiler_air::FMT_ATERM_TEXT;
++    else if ( strcmp(format_string, "aterm_baf") == 0 )
++        format = compiler_air::FMT_ATERM_BAF;
++    else if ( strcmp(format_string, "aterm_taf") == 0 )
++        format = compiler_air::FMT_ATERM_TAF;
++    else
++        format = compiler_air::FMT_UNKNOWN;
++
++    return format;
++}
++
++compiler_air::if_mode_t
++compiler_air::str2ifmode(const char * format_string)
++{
++    compiler_air::if_mode_t if_mode;
++
++    if ( strcmp(format_string, "tree") == 0 )
++        if_mode = compiler_air::IF_MODE_TREE;
++    else if ( strcmp(format_string, "list") == 0 )
++        if_mode = compiler_air::IF_MODE_LIST;
++    else
++	RNA_SHOULD_NOT_REACH_HERE;
++
++    return if_mode;
++}
++
++compiler_air::compiler_air (const char * output_filename, 
++			    bool debug_mode1, output_format fmt, if_mode_t if_mode1)
++{
++    filename = strdup (output_filename);
++
++    debug_mode = debug_mode1;
++    format = fmt;
++    if_mode = if_mode1;
++    switch_mode = SWITCH_MODE_ON;
++
++    RNA::File * file = new RNA::File (output_filename, "w");
++    m = new RNA::Memory;
++    RNA::Context * context = new RNA::StrContext;
++
++    output = new RNA::AsciiSerializer ();
++    output->set_stream (file);
++    output->set_context (new RNA::StrContext (context));
++    output->set_memory (m);
++
++    function_memory = new RNA::Memory;
++    function_memory->startArray (0, RNA::RECORD);
++    count_functions = 0;
++
++    src_filename=strdup("*unknown*");
++}
++
++void
++compiler_air::compile_function (octave_user_function * fcn)
++{
++    RNA::Rna function (emit_octave_user_function (*fcn));
++    function_memory->grow (function);
++    count_functions ++;
++}
++
++compiler_air::~compiler_air ()
++{
++    RNA::Array * functions = function_memory->finishArray ();
++    functions->setLength (count_functions);
++    
++    RNA::Rna program (TreeProgram::Create (function_memory, functions));
++
++    if ( format == FMT_RNA ) {
++
++        output->write (program, RNA::RECORD);
++
++    } else if ( format == FMT_ATERM_TEXT ||
++                format == FMT_ATERM_BAF ||
++                format == FMT_ATERM_TAF ) {
++
++#if defined(WITH_ATERM)
++
++        aterm_output_fun output_fun;
++
++        // return value mismatch in different output functions!
++        switch ( format ) {
++            case FMT_ATERM_TEXT: output_fun = ATwriteToTextFile;  break;
++            case FMT_ATERM_BAF: RNA_SHOULD_NOT_REACH_HERE; /* output_fun = ATwriteToBinaryFile; */ break;
++            case FMT_ATERM_TAF: RNA_SHOULD_NOT_REACH_HERE; break;
++            default:RNA_SHOULD_NOT_REACH_HERE; 
++        }
++
++        RNA::IntContext * context = new RNA::IntContext ();
++        ATerm term = make_aterm (program, RNA::RECORD, context);
++
++        FILE * f = fopen (filename, "w");
++        if (f != NULL) {
++            int result = output_fun(term, f) > 0;
++            if (!result) { RNA_SHOULD_NOT_REACH_HERE; }
++            else fclose (f);
++        }
++
++#endif  // WITH_ATERM
++
++    } else {
++        RNA_SHOULD_NOT_REACH_HERE;
++    }
++
++    delete function_memory;
++    count_functions = 0;
++    
++    delete output->get_stream ();
++    delete m;
++    delete output->get_context ();
++
++    output->set_stream (0);
++    output->set_context (0);
++    output->set_memory (0);
++    delete output;
++
++    free (filename);
++}
++
++
++#if defined(WITH_ATERM)
++
++using namespace RNA;
++
++ATerm 
++make_aterm (RNA::Rna rna, RNA::Type type, RNA::IntContext * context)
++{
++    ATerm result = (ATerm) 0;
++    AFun fun;
++
++    switch (type) {
++        case BOOL: result = (ATerm) ATmakeInt (rna.readBool () ? 1 : 0);
++        Case INT: result = (ATerm) ATmakeInt (rna.readInt ());
++        Case FLOAT: result = (ATerm) ATmakeReal (rna.readFloat ());
++        Case PTR:
++            result = (ATerm) ATmakeInt ((int) rna.readPtr ());
++        Case STR:
++        case RECORD:
++        case ARRAY:
++            if (rna.isNull ()) {
++		switch(type) {
++		case STR: result = (ATerm) ATmakeAppl0(ATmakeAFun("", 0, ATtrue));
++		Case RECORD: 
++		    fun = ATmakeAFun ("", 0, ATfalse);
++		    result = (ATerm) ATmakeAppl0(fun);
++		Case ARRAY: result = (ATerm) ATmakeList0 ();
++		Default: RNA_SHOULD_NOT_REACH_HERE;
++		}
++            } else {
++                Context::Binding * entry = context->reverse_lookup (rna, type);
++
++                if (entry->resolved) {
++                    RNA_ASSERT (entry->type == type);
++                    result = (ATerm) entry->handle.readInt ();
++                } else {
++                    context->resolve (entry, rna._word);
++		
++                    result = make_composite_aterm (rna, type, context);
++                    entry->handle = Rna ((Int) result);
++                    entry->type = type;
++                }
++            }
++        Default:
++            RNA_SHOULD_NOT_REACH_HERE;
++    }
++
++    return result;
++}
++
++ATerm
++make_composite_aterm (RNA::Rna rna, RNA::Type type, RNA::IntContext * context)
++{
++    int i, length;
++
++    Record * record;
++    TypeDescriptor * td;
++    RNA::Array * array;
++    RNA::List * list;
++    AFun fun;
++    ATerm result = (ATerm) 0;
++    ATermList at_list;
++
++    switch (type) {
++
++        case STR:
++            result = (ATerm) ATmakeAppl0(ATmakeAFun(rna.readStr (), 0, ATtrue));
++
++        Case RECORD:
++            record = rna.readRecord ();
++            td = record->getTypeInfo ();
++            length = td->get_size ();
++            list = td->getAttr()->find("at_name");
++            char * at_fname;
++
++            if ( list != NULL )
++                at_fname = list->getCar().readStr();
++            else
++                at_fname = td->get_name().readStr();
++
++            at_list = ATmakeList0 ();
++
++	    for (i = length-1; i >= 0; i--) {
++		Rna item(record->get(i));
++		at_list = ATinsert(at_list,
++                                    make_aterm(item, td->type(i), context));
++	    }
++
++            fun = ATmakeAFun (at_fname, length, ATfalse);
++	    result = (ATerm) ATmakeApplList (fun, at_list);
++
++            for ( list = record->getAttr(); list; list = list->getCdr() ) {
++                char * at_label = list->getTag();
++                ATerm at_anno = make_aterm (list->getCar(), list->getType(),
++                                                                    context);
++                ATsetAnnotation(result, ATparse(at_label), at_anno);
++            }
++
++        Case ARRAY:
++            array = rna.readArray ();
++            length = array->getLength ();
++
++            at_list = ATmakeList0 ();
++            for (i = length-1; i >= 0; i--) {
++                RNA::Rna item (array->at (i));
++                at_list = ATinsert (at_list, make_aterm (item, array->getType (), context));
++            }
++
++            result = (ATerm) at_list;
++
++        Default:
++            RNA_SHOULD_NOT_REACH_HERE;
++    }
++
++    return result;
++}
++
++#endif  // WITH_ATERM
+diff -Nur octave-2.1.35/src/cp-air.h octave/src/cp-air.h
+--- octave-2.1.35/src/cp-air.h	Thu Jan  1 01:00:00 1970
++++ octave/src/cp-air.h	Fri Sep 13 17:23:24 2002
+@@ -0,0 +1,139 @@
++// Compiler header file
++
++#if !defined (octave_compiler_air_h)
++#define octave_compiler_air_h 1
++
++#include <rna/rna.h>
++
++#include "mouse-tree.h"
++#include "mouse-type.h"
++#include "mouse-value.h"
++using namespace Mouse;
++
++#include "pt-walk.h"
++
++class tree_command;
++class tree_expression;
++
++class compiler_air
++{
++public:
++
++    typedef unsigned long output_format;
++
++    typedef enum {
++    	IF_MODE_TREE,
++	IF_MODE_LIST
++    } if_mode_t;
++
++    typedef enum {
++    	SWITCH_MODE_ON,
++	SWITCH_MODE_OFF
++    } switch_mode_t;
++
++    static const output_format FMT_UNKNOWN = 0;
++    static const output_format FMT_RNA = 1;
++    static const output_format FMT_ATERM_TEXT = 2;
++    static const output_format FMT_ATERM_BAF = 3;
++    static const output_format FMT_ATERM_TAF = 4;
++
++    static void Initialize (RNA::Context * air);
++    static output_format str2fmt(const char * format_string);
++    static if_mode_t str2ifmode(const char * format_string);
++
++    compiler_air (const char * filename, 
++		  bool debug_mode1 = false, 
++		  output_format fmt = FMT_RNA,
++		  if_mode_t if_mode1 = IF_MODE_LIST);
++    ~compiler_air ();
++
++    void compile_function (octave_user_function * fcn);
++
++private:
++
++    // used by constructor
++    char * filename;
++    bool debug_mode;
++    output_format format;
++    if_mode_t if_mode;
++    switch_mode_t switch_mode;
++    static RNA::Context * air;
++    RNA::Memory * m;
++    RNA::Serializer * output;
++    char * src_filename;
++
++    RNA::Memory * function_memory;
++    int count_functions;
++
++    // octave parse tree walking
++
++    // functions and statements
++    RNA::Rna emit_octave_user_function (octave_user_function&);
++    RNA::Rna emit_parameter_list (tree_parameter_list&);
++    RNA::Rna emit_identifier (tree_identifier&);
++    RNA::Rna emit_statement_list (tree_statement_list&);
++    RNA::Rna emit_statement (tree_statement&);
++
++    // symbols and comments
++    RNA::Rna emit_symbol_table (symbol_table&);
++    RNA::Rna emit_symbol (symbol_record&);
++    RNA::Array * emit_comment_list (octave_comment_list*);
++    RNA::Rna emit_comment (octave_comment_elt&);
++
++    // commands
++    RNA::Rna emit_command (tree_command&);
++    RNA::Rna emit_break_command (tree_break_command&);
++    RNA::Rna emit_continue_command (tree_continue_command&);
++    RNA::Rna emit_return_command (tree_return_command&);
++    RNA::Rna emit_no_op_command (tree_no_op_command&);
++
++    RNA::Rna emit_simple_for_command (tree_simple_for_command&);
++    RNA::Rna emit_complex_for_command (tree_complex_for_command&);
++    RNA::Rna emit_while_command (tree_while_command&);
++    RNA::Rna emit_do_until_command (tree_do_until_command&);
++
++    RNA::Rna emit_if_command (tree_if_command&);
++    RNA::Rna emit_if_command_list (tree_if_command_list&);
++    RNA::Rna emit_if_clause (tree_if_clause&);
++    RNA::Rna emit_switch_command (tree_switch_command&);
++    RNA::Rna emit_switch_case_list (tree_switch_case_list&, tree_expression&);
++    RNA::Rna emit_switch_case (tree_switch_case&, tree_expression&);
++
++    RNA::Rna emit_decl_command (tree_decl_command&);
++    RNA::Rna emit_decl_init_list (tree_decl_init_list&);
++    RNA::Rna emit_decl_elt (tree_decl_elt&);
++
++    RNA::Rna emit_plot_command (tree_plot_command&);
++    RNA::Rna emit_try_catch_command (tree_try_catch_command&);
++    RNA::Rna emit_unwind_protect_command (tree_unwind_protect_command&);
++
++    // expressions
++    RNA::Rna emit_expression (tree_expression&);
++    RNA::Rna emit_binary_expression (tree_binary_expression&);
++    RNA::Rna emit_colon_expression (tree_colon_expression&);
++    RNA::Rna emit_constant (tree_constant&);
++    RNA::Rna emit_index_expression (tree_index_expression&);
++    RNA::Rna emit_argument_list (tree_argument_list&);
++    RNA::Rna emit_simple_assignment (tree_simple_assignment&);
++    RNA::Rna emit_multi_assignment (tree_multi_assignment&);
++    RNA::Rna emit_indirect_ref (tree_indirect_ref&);
++    RNA::Rna emit_matrix (tree_matrix&);
++    RNA::Rna emit_cell (tree_cell&);
++    RNA::Rna emit_postfix_expression (tree_postfix_expression&);
++    RNA::Rna emit_prefix_expression (tree_prefix_expression&);
++
++    friend class tree_switch_emit_function;
++
++    // helper functions
++    RNA::Rna double2value (double);
++    void cleanup_statement_list_rec (RNA::Array *, RNA::Memory *, int &);
++};
++
++#endif
++
++/*
++;;; Local Variables: ***
++;;; mode: C++ ***
++;;; End: ***
++*/
++
+diff -Nur octave-2.1.35/src/cp-dump.cc octave/src/cp-dump.cc
+--- octave-2.1.35/src/cp-dump.cc	Thu Jan  1 01:00:00 1970
++++ octave/src/cp-dump.cc	Fri Sep 13 13:41:53 2002
+@@ -0,0 +1,1005 @@
++// -*-c++-*-
++
++// Gordon's source file
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <stdio.h>
++
++#include <string>
++
++#include "pt-walk.h"
++
++#include "ov-usr-fcn.h"
++#include "pt-misc.h"
++#include "pt-decl.h"
++#include "pt-stmt.h"
++
++#include "pt-cmd.h"
++#include "pt-jump.h"
++#include "pt-loop.h"
++#include "pt-select.h"
++
++#include "pt-binop.h"
++#include "pt-colon.h"
++#include "pt-id.h"
++#include "pt-const.h"
++#include "pt-assign.h"
++#include "pt-idx.h"
++#include "pt-mat.h"
++#include "pt-cell.h"
++#include "pt-indir.h"
++#include "pt-unop.h"
++
++#include "pt-arg-list.h"
++#include "comment-list.h"
++#include "symtab.h"
++
++#include "cp-dump.h"
++
++void 
++tree_dump::visit_octave_user_function (octave_user_function& item)
++{
++  fprintf (f, "%*s*(octave_user_function *)%8.8p%s\n", indent, "", 
++	   &item,
++	   item.is_system_fcn_file () ? " (system)" : "");
++  indent += 2;
++  fprintf (f, "%*sname=\"%s\"\n", indent, "", 
++	   item.fcn_name.c_str ());
++  fprintf (f, "%*sfilename=\"%s\"\n", indent, "", 
++	   item.file_name.c_str ());
++  indent -= 2;
++
++  // incoming parameter list
++  if (item.parameter_list ()) {
++    indent += 2;
++    fprintf (f, "%*sincoming parameter list:\n", indent, "");
++    indent += 2;
++    item.parameter_list ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // outgoing parameter list
++  if (item.return_list ()) {
++    indent += 2;
++    fprintf (f, "%*soutgoing parameter list:\n", indent, "");
++    indent += 2;
++    item.return_list ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // function body
++  if (item.body ()) {
++    indent += 2;
++    fprintf (f, "%*sfunction body:\n", indent, "");
++    indent += 2;
++    item.body ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // symbol table
++  if (item.sym_tab) {
++    indent += 2;
++    fprintf (f, "%*ssymbol table:\n", indent, "");
++    indent += 2;
++    print_symbol_table (*item.sym_tab);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // comments
++  if (item.lead_comm) {
++    indent += 2;
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.lead_comm);
++    indent -= 2;
++    indent -= 2;
++  }
++  if (item.trail_comm) {
++    indent += 2;
++    fprintf (f, "%*strailing comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.trail_comm);
++    indent -= 2;
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_parameter_list (tree_parameter_list& item)
++{
++  fprintf (f, "%*s*(tree_parameter_list *)%8.8p%s\n", 
++	   indent, "", &item,
++	   item.takes_varargs() ? " (varargs)" : "");
++  
++  indent += 2;
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    fprintf (f, "%*s%d. tree_parameter\n", 
++	     indent, "",
++	     i++);
++    indent += 2;
++    tree_identifier * elt = item (p);
++    if (elt)
++      elt->accept (*this);
++    indent -= 2;
++  }
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_statement_list (tree_statement_list& item)
++{
++  fprintf (f, "%*s*(tree_statement_list *)%8.8p%s\n", 
++	   indent, "", &item,
++	   item.function_body ? " (body)" : "");
++  
++  indent += 2;
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    fprintf (f, "%*s%d. tree_statement\n", 
++	     indent, "",
++	     i++);
++    indent += 2;
++    tree_statement *elt = item (p);
++    if (elt)
++      elt->accept (*this);
++    indent -= 2;
++  }
++  indent -= 2;
++}
++void 
++tree_dump::visit_statement (tree_statement& item) 
++{
++  fprintf (f, "%*s*(tree_statment *)%8.8p%s\n", 
++	   indent, "", &item,
++	   item.print_result () ? " (printing)" : "");
++
++  // command
++  if (item.command ()) {
++    indent += 2;
++    fprintf (f, "%*scommand:\n", indent, "");
++    indent += 2;
++    item.command ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++  // expression
++  if (item.expression ()) {
++    indent += 2;
++    fprintf (f, "%*sexpression:\n", indent, "");
++    indent += 2;
++    item.expression ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++  // comments
++  if (item.comment_text ()) {
++    indent += 2;
++    fprintf (f, "%*scomments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.comment_text ());
++    indent -= 2;
++    indent -= 2;
++  }
++
++}
++
++void
++tree_dump::print_comment_list (octave_comment_list& item)
++{
++  fprintf (f, "%*s*(octave_comment_list *)%8.8p\n", 
++	   indent, "", &item);
++
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    indent += 2;
++    octave_comment_elt elt = item (p);
++    print_comment (elt);
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::print_comment (octave_comment_elt& item)
++{
++  fprintf (f, "%*s# %s\n", 
++	   indent, "",
++	   item.text ().c_str ());  
++}
++
++void
++tree_dump::print_symbol_table (symbol_table& item)
++{
++  fprintf (f, "%*s*(symbol_table *)%8.8p\n", 
++	   indent, "", &item);
++  indent += 2;
++  int j=0;
++  for (int i = 0; i < item.table_size; i++) {
++    for (symbol_record *ptr = item.table[i].next();
++	 ptr; 
++	 ptr = ptr->next ()) {
++      fprintf (f, "%*s%d. symbol\n", 
++	       indent, "", j++);
++      print_symbol (*ptr);
++    }
++  }
++  indent -= 2;
++}
++
++void
++tree_dump::print_symbol (symbol_record& item)
++{
++  fprintf (f, "%*s*(symbol_record *)%8.8p name=\"%s\"\n", 
++	   indent, "", &item, item.name ().c_str());
++  if (item.definition) {
++    indent += 2;
++    if (item.definition->count != 1)
++      fprintf (f, "%*ssymbol_def::count: %d\n", indent, "", 
++	       item.definition->count);
++    fprintf (f, "%*sdef.type_name():   %s\n", indent, "", 
++	     item.definition->definition.type_name ().c_str());
++    if (item.definition->definition.get_count () != 1)
++      fprintf (f, "%*sdef.count():       %d\n", indent, "", 
++	       item.definition->definition.get_count ());
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_break_command (tree_break_command& item) 
++{
++  fprintf (f, "%*s*(tree_break_command *)%8.8p\n", 
++	   indent, "", &item);
++}
++
++void 
++tree_dump::visit_continue_command (tree_continue_command& item) 
++{
++  fprintf (f, "%*s*(tree_continue_command *)%8.8p\n", 
++	   indent, "", &item);
++}
++
++void 
++tree_dump::visit_return_command (tree_return_command& item) 
++{
++  fprintf (f, "%*s*(tree_return_command *)%8.8p\n", 
++	   indent, "", &item);
++}
++
++void 
++tree_dump::visit_no_op_command (tree_no_op_command& item) 
++{
++  fprintf (f, "%*s*(tree_no_op_command *)%8.8p\n", 
++	   indent, "", &item);
++  indent += 2;
++  fprintf (f, "%*s# %s\n", 
++	   indent, "", item.original_command ().c_str ());
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_simple_for_command (tree_simple_for_command& item) 
++{
++  fprintf (f, "%*s*(tree_simple_for_command *)%8.8p\n", indent, "", 
++	   &item);
++
++  // loop variable
++  if (item.left_hand_side ()) {
++    indent += 2;
++    fprintf (f, "%*sloop variable:\n", indent, "");
++    indent += 2;
++    item.left_hand_side ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // loop range
++  if (item.control_expr ()) {
++    indent += 2;
++    fprintf (f, "%*sloop range:\n", indent, "");
++    indent += 2;
++    item.control_expr ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // loop body
++  if (item.body ()) {
++    indent += 2;
++    fprintf (f, "%*sloop body:\n", indent, "");
++    indent += 2;
++    item.body ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // comments
++  if (item.leading_comment ()) {
++    indent += 2;
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++    indent -= 2;
++  }
++  if (item.trailing_comment ()) {
++    indent += 2;
++    fprintf (f, "%*strailing comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.trailing_comment ());
++    indent -= 2;
++    indent -= 2;
++  }  
++}
++
++void 
++tree_dump::visit_complex_for_command (tree_complex_for_command& item) 
++{
++  fprintf (f, "%*s*(tree_complex_for_command *)%8.8p\n", indent, "", 
++	   &item);
++
++  // loop variable
++  if (item.left_hand_side ()) {
++    indent += 2;
++    fprintf (f, "%*sloop variable:\n", indent, "");
++    indent += 2;
++    item.left_hand_side ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // loop range
++  if (item.control_expr ()) {
++    indent += 2;
++    fprintf (f, "%*sloop range:\n", indent, "");
++    indent += 2;
++    item.control_expr ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // loop body
++  if (item.body ()) {
++    indent += 2;
++    fprintf (f, "%*sloop body:\n", indent, "");
++    indent += 2;
++    item.body ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // comments
++  if (item.leading_comment ()) {
++    indent += 2;
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++    indent -= 2;
++  }
++  if (item.trailing_comment ()) {
++    indent += 2;
++    fprintf (f, "%*strailing comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.trailing_comment ());
++    indent -= 2;
++    indent -= 2;
++  }  
++}
++
++void 
++tree_dump::visit_while_command (tree_while_command& item) 
++{
++  fprintf (f, "%*s*(tree_while_command *)%8.8p\n", indent, "", 
++	   &item);
++
++  // condition
++  if (item.condition ()) {
++    indent += 2;
++    fprintf (f, "%*sloop condition:\n", indent, "");
++    indent += 2;
++    item.condition ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // loop body
++  if (item.body ()) {
++    indent += 2;
++    fprintf (f, "%*sloop body:\n", indent, "");
++    indent += 2;
++    item.body ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // comments
++  if (item.leading_comment ()) {
++    indent += 2;
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++    indent -= 2;
++  }
++  if (item.trailing_comment ()) {
++    indent += 2;
++    fprintf (f, "%*strailing comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.trailing_comment ());
++    indent -= 2;
++    indent -= 2;
++  }  
++}
++
++void 
++tree_dump::visit_do_until_command (tree_do_until_command& item) 
++{
++  fprintf (f, "%*s*(tree_do_until_command *)%8.8p\n", indent, "", 
++	   &item);
++
++  // condition
++  if (item.condition ()) {
++    indent += 2;
++    fprintf (f, "%*sloop condition:\n", indent, "");
++    indent += 2;
++    item.condition ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // loop body
++  if (item.body ()) {
++    indent += 2;
++    fprintf (f, "%*sloop body:\n", indent, "");
++    indent += 2;
++    item.body ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // comments
++  if (item.leading_comment ()) {
++    indent += 2;
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++    indent -= 2;
++  }
++  if (item.trailing_comment ()) {
++    indent += 2;
++    fprintf (f, "%*strailing comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.trailing_comment ());
++    indent -= 2;
++    indent -= 2;
++  }  
++}
++
++void 
++tree_dump::visit_if_command (tree_if_command& item) 
++{
++  fprintf (f, "%*s*(octave_if_command *)%8.8p\n", indent, "", 
++	   &item);
++
++  indent += 2;
++
++  // clause list
++  tree_if_command_list *list = item.cmd_list ();
++  if (list)
++    list->accept (*this);
++
++  // comments
++  if (item.leading_comment ()) {
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++  }
++  if (item.trailing_comment ()) {
++    fprintf (f, "%*strailing comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.trailing_comment ());
++    indent -= 2;
++  }  
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_if_command_list (tree_if_command_list& item)
++{
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    tree_if_clause *elt = item (p);
++    fprintf (f, "%*s%d. if_clause:\n", 
++	     indent, "", i++);
++    indent += 2;
++    elt->accept (*this);
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_if_clause (tree_if_clause& item)
++{
++  fprintf (f, "%*s*(tree_if_clause *)%8.8p\n", indent, "", 
++	   &item);
++
++  // condition
++  if (item.condition ()) {
++    indent += 2;
++    fprintf (f, "%*sif condition:\n", indent, "");
++    indent += 2;
++    item.condition ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // if body
++  if (item.commands ()) {
++    indent += 2;
++    fprintf (f, "%*sif body:\n", indent, "");
++    indent += 2;
++    item.commands ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // comments
++  if (item.leading_comment ()) {
++    indent += 2;
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_switch_command (tree_switch_command& item)
++{
++  fprintf (f, "%*s*(tree_switch_command *)%8.8p\n", indent, "", 
++	   &item);
++
++  indent += 2;
++
++  // condition
++  if (item.switch_value ()) {
++    indent += 2;
++    fprintf (f, "%*sswitch condition:\n", indent, "");
++    indent += 2;
++    item.switch_value ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // clause list
++  tree_switch_case_list *list = item.case_list ();
++  if (list)
++    list->accept (*this);
++
++  // comments
++  if (item.leading_comment ()) {
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++  }
++  if (item.trailing_comment ()) {
++    fprintf (f, "%*strailing comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.trailing_comment ());
++    indent -= 2;
++  }  
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_switch_case_list (tree_switch_case_list& item)
++{
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    tree_switch_case *elt = item (p);
++    fprintf (f, "%*s%d. switch_case:\n", 
++	     indent, "", i++);
++    indent += 2;
++    elt->accept (*this);
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_switch_case (tree_switch_case& item)
++{
++  fprintf (f, "%*s*(tree_switch_case *)%8.8p\n", indent, "", 
++	   &item);
++
++  // condition
++  if (item.case_label ()) {
++    indent += 2;
++    fprintf (f, "%*sswitch case label:\n", indent, "");
++    indent += 2;
++    item.case_label ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // if body
++  if (item.commands ()) {
++    indent += 2;
++    fprintf (f, "%*sif body:\n", indent, "");
++    indent += 2;
++    item.commands ()->accept (*this);
++    indent -= 2;
++    indent -= 2;
++  }
++
++  // comments
++  if (item.leading_comment ()) {
++    indent += 2;
++    fprintf (f, "%*sleading comments:\n", indent, "");
++    indent += 2;
++    print_comment_list (*item.leading_comment ());
++    indent -= 2;
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_decl_command (tree_decl_command& item)
++{
++  fprintf (f, "%*s*(tree_decl_command *)%8.8p \n", indent, "", 
++	   &item);
++  
++  indent += 2;
++  fprintf (f, "%*sname=\"%s\"\n", indent, "", 
++	   item.name ().c_str ());
++  
++  tree_decl_init_list *init_list = item.initializer_list ();
++  if (init_list)
++    init_list->accept (*this);
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_decl_init_list (tree_decl_init_list& item)
++{
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    tree_decl_elt *elt = item (p);
++    fprintf (f, "%*s%d. declaration:\n", 
++	     indent, "", i++);
++    indent += 2;
++    elt->accept (*this);
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_decl_elt (tree_decl_elt& item)
++{
++  fprintf (f, "%*s*(tree_decl_elt *)%8.8p \n", indent, "", 
++	   &item);
++
++  // name
++  indent += 2;
++  fprintf (f, "%*sname:\n", indent, "");
++  indent += 2;
++  tree_identifier *id = item.ident ();
++  if (id)
++    id->accept (*this);
++  indent -= 2;
++
++  // value
++  fprintf (f, "%*svalue:\n", indent, "");
++  tree_expression *expr = item.expression ();
++  indent += 2;
++  if (expr)
++    expr->accept (*this);
++  indent -= 2;
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_plot_command (tree_plot_command& item)
++{
++  fprintf (f, "%*s*(tree_plot_command *)%8.8p \n", indent, "", 
++	   &item);
++
++  fprintf (f, "%*s@@@\n", indent+2, "");
++}
++
++void 
++tree_dump::visit_try_catch_command (tree_try_catch_command& item)
++{
++  fprintf (f, "%*s*(tree_try_catch_command *)%8.8p \n", indent, "", 
++	   &item);
++
++  fprintf (f, "%*s@@@\n", indent+2, "");
++}
++
++void 
++tree_dump::visit_unwind_protect_command (tree_unwind_protect_command& item)
++{
++  fprintf (f, "%*s*(tree_unwind_protect_command *)%8.8p \n", indent, "", 
++	   &item);
++
++  fprintf (f, "%*s@@@\n", indent+2, "");
++}
++
++void 
++tree_dump::visit_binary_expression (tree_binary_expression& item)
++{
++  fprintf (f, "%*s*(tree_binary_expression *)%8.8p \n", indent, "", 
++	   &item);
++
++  indent += 2;
++  octave_value::binary_op op = item.etype;
++  fprintf (f, "%*soperator: %d(%s)\n", indent, "",
++	   op, octave_value::binary_op_as_string (op).c_str());
++  
++  fprintf (f, "%*sleft hand side:\n", indent, "");
++  indent += 2;
++  tree_expression *op1 = item.lhs ();
++  if (op1)
++    op1->accept (*this);
++  indent -= 2;
++
++  fprintf (f, "%*sright hand side:\n", indent, "");
++  indent += 2;
++  tree_expression *op2 = item.rhs ();
++  if (op2)
++    op2->accept (*this);
++  indent -= 2;
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_colon_expression (tree_colon_expression& item)
++{
++  fprintf (f, "%*s*(tree_colon_expression *)%8.8p \n", indent, "", 
++	   &item);
++
++  indent += 2;
++  fprintf (f, "%*sbase value:\n", indent, "");
++  indent += 2;
++  tree_expression *op1 = item.base ();
++  if (op1)
++    op1->accept (*this);
++  indent -= 2;
++
++  fprintf (f, "%*sincrement:\n", indent, "");
++  indent += 2;
++  tree_expression *op2 = item.increment ();
++  if (op2)
++    op2->accept (*this);
++  indent -= 2;
++
++  fprintf (f, "%*slimit:\n", indent, "");
++  indent += 2;
++  tree_expression *op3 = item.limit ();
++  if (op3)
++    op3->accept (*this);
++  indent -= 2;
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_constant (tree_constant& item)
++{
++  fprintf (f, "%*s*(tree_constant *)%8.8p\n", 
++	   indent, "", &item);
++  
++  indent += 2;
++  ostrstream ss;
++  item.print_raw (ss, true, true);
++  ss << '\0';
++  fprintf (f, "%*svalue: %s\n", indent, "", ss.str());
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_identifier (tree_identifier& item)
++{
++  fprintf (f, "%*s*(tree_identifier *)%8.8p name=\"%s\" record=%8.8p\n", 
++	   indent, "", &item,
++	   item.name ().c_str (),
++	   item.sym);
++}
++
++void 
++tree_dump::visit_index_expression (tree_index_expression& item)
++{
++  fprintf (f, "%*s*(tree_index_expression *)%8.8p \n", indent, "", 
++	   &item);
++
++  indent += 2;
++  fprintf (f, "%*sexpression:\n", indent, "");
++  indent += 2;
++  tree_expression *op1 = item.expression ();
++  if (op1)
++    op1->accept (*this);
++  indent -= 2;
++
++  fprintf (f, "%*sargument list:\n", indent, "");
++  indent += 2;
++  tree_argument_list *list = item.arg_list ();
++  if (list)
++    list->accept (*this);
++  indent -= 2;
++  indent -= 2;
++}
++
++void 
++tree_dump::visit_argument_list (tree_argument_list& item) 
++{
++  int i = 0;
++  for (Pix p = item.first (); p;  item.next (p)) {
++    tree_expression *elt = item (p);
++    fprintf (f, "%*s%d. argument:\n", 
++	     indent, "", i++);
++    indent += 2;
++    elt->accept (*this);
++    indent -= 2;
++  }
++}
++
++void 
++tree_dump::visit_simple_assignment (tree_simple_assignment& item) 
++{
++  fprintf (f, "%*s*(tree_simple_assignment *)%8.8p \n", indent, "", 
++	   &item);
++  
++  indent += 2;
++  octave_value::assign_op op = item.etype;
++  fprintf (f, "%*soperator: %d(%s)\n", indent, "",
++	   op, octave_value::assign_op_as_string (op).c_str());
++  
++  fprintf (f, "%*sleft hand side:\n", indent, "");
++  indent += 2;
++  tree_expression *op1 = item.left_hand_side ();
++  if (op1)
++    op1->accept (*this);
++  indent -= 2;
++
++  fprintf (f, "%*sright hand side:\n", indent, "");
++  indent += 2;
++  tree_expression *op2 = item.right_hand_side ();
++  if (op2)
++    op2->accept (*this);
++  indent -= 2;
++  indent -= 2;  
++}
++
++void 
++tree_dump::visit_multi_assignment (tree_multi_assignment& item) 
++{
++  fprintf (f, "%*s*(tree_multi_assignment *)%8.8p \n", indent, "", 
++	   &item);
++  
++  indent += 2;
++  octave_value::assign_op op = item.etype;
++  fprintf (f, "%*soperator: %d(%s)\n", indent, "",
++	   op, octave_value::assign_op_as_string (op).c_str());
++  
++
++  fprintf (f, "%*sleft hand side:\n", indent, "");
++  indent += 2;
++  tree_argument_list *list = item.left_hand_side ();
++  if (list)
++    list->accept (*this);
++  indent -= 2;
++  indent -= 2;
++
++  fprintf (f, "%*sright hand side:\n", indent, "");
++  indent += 2;
++  tree_expression *op2 = item.right_hand_side ();
++  if (op2)
++    op2->accept (*this);
++  indent -= 2;
++  indent -= 2;  
++}
++
++void 
++tree_dump::visit_indirect_ref (tree_indirect_ref& item) 
++{
++  fprintf (f, "%*s*(tree_indirect_ref *)%8.8p \n", indent, "", 
++	   &item);
++  
++  fprintf (f, "%*sexpression:\n", indent, "");
++  indent += 2;
++  tree_expression *op1 = item.expression ();
++  if (op1)
++    op1->accept (*this);
++  indent -= 2;
++
++  fprintf (f, "%*selement: %s\n", indent, "", 
++	   item.elt_name().c_str());
++  indent -= 2;  
++}
++
++void 
++tree_dump::visit_matrix (tree_matrix& item) 
++{
++  fprintf (f, "%*s*(tree_matrix *)%8.8p\n", indent, "", 
++	   &item);
++
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    tree_argument_list *elt = item (p);
++    if (elt) {
++      fprintf (f, "%*s%d. row:\n", 
++	       indent, "", i++);
++      indent += 2;
++      elt->accept (*this);
++      indent -= 2;
++    }
++  }
++}
++
++void 
++tree_dump::visit_cell (tree_cell& item) 
++{
++  fprintf (f, "%*s*(tree_cell *)%8.8p\n", indent, "", 
++	   &item);
++
++  int i = 0;
++  for (Pix p = item.first (); p; item.next (p)) {
++    tree_argument_list *elt = item (p);
++    if (elt) {
++      fprintf (f, "%*s%d. row:\n", 
++	       indent, "", i++);
++      indent += 2;
++      elt->accept (*this);
++      indent -= 2;
++    }
++  }
++}
++
++void  
++tree_dump::visit_postfix_expression (tree_postfix_expression& item) 
++{
++  fprintf (f, "%*s*(tree_postfix_expression *)%8.8p \n", indent, "", 
++	   &item);
++
++  indent += 2;
++  octave_value::unary_op op = item.etype;
++  fprintf (f, "%*soperator: %d(%s)\n", indent, "",
++	   op, octave_value::unary_op_as_string (op).c_str());
++  
++  fprintf (f, "%*sexpression:\n", indent, "");
++  indent += 2;
++  tree_expression *op1 = item.operand ();
++  if (op1)
++    op1->accept (*this);
++  indent -= 2;
++}
++
++void  
++tree_dump::visit_prefix_expression (tree_prefix_expression& item) 
++{
++  fprintf (f, "%*s*(tree_postfix_expression *)%8.8p \n", indent, "", 
++	   &item);
++
++  indent += 2;
++  octave_value::unary_op op = item.etype;
++  fprintf (f, "%*soperator: %d(%s)\n", indent, "",
++	   op, octave_value::unary_op_as_string (op).c_str());
++  
++  fprintf (f, "%*sexpression:\n", indent, "");
++  indent += 2;
++  tree_expression *op1 = item.operand ();
++  if (op1)
++    op1->accept (*this);
++  indent -= 2;
++}
++
+diff -Nur octave-2.1.35/src/cp-dump.h octave/src/cp-dump.h
+--- octave-2.1.35/src/cp-dump.h	Thu Jan  1 01:00:00 1970
++++ octave/src/cp-dump.h	Tue Apr  2 08:08:48 2002
+@@ -0,0 +1,120 @@
++// Compiler header file
++
++#if !defined (octave_compiler_dump_h)
++#define octave_compiler_dump_h 1
++
++#include "pt-walk.h"
++
++class 
++tree_dump : public tree_walker
++{
++public:
++
++  tree_dump (FILE * output = stdout)
++    : f (output), indent (0) { };
++
++  ~tree_dump (void) { }
++
++  // functions and statements
++  void visit_octave_user_function (octave_user_function&);
++  void visit_parameter_list (tree_parameter_list&);
++  void visit_identifier (tree_identifier&);
++  void visit_statement_list (tree_statement_list&);
++  void visit_statement (tree_statement&);
++
++  // symbols and comments
++  void print_symbol_table (symbol_table&);
++  void print_symbol (symbol_record&);
++  void print_comment_list (octave_comment_list&);
++  void print_comment (octave_comment_elt&);
++
++  // commands
++  void visit_break_command (tree_break_command&);
++  void visit_continue_command (tree_continue_command&);
++  void visit_return_command (tree_return_command&);
++  void visit_no_op_command (tree_no_op_command&);
++
++  void visit_simple_for_command (tree_simple_for_command&);
++  void visit_complex_for_command (tree_complex_for_command&);
++  void visit_while_command (tree_while_command&);
++  void visit_do_until_command (tree_do_until_command&);
++
++  void visit_if_command (tree_if_command&);
++  void visit_if_command_list (tree_if_command_list&);
++  void visit_if_clause (tree_if_clause&);
++  void visit_switch_command (tree_switch_command&);
++  void visit_switch_case_list (tree_switch_case_list&);
++  void visit_switch_case (tree_switch_case&);
++
++  void visit_decl_command (tree_decl_command&);
++  void visit_decl_init_list (tree_decl_init_list&);
++  void visit_decl_elt (tree_decl_elt&);
++
++  void visit_plot_command (tree_plot_command&);
++  void visit_try_catch_command (tree_try_catch_command&);
++  void visit_unwind_protect_command (tree_unwind_protect_command&);
++
++  // expressions
++  void visit_binary_expression (tree_binary_expression&);
++  void visit_colon_expression (tree_colon_expression&);
++  void visit_constant (tree_constant&);
++  void visit_index_expression (tree_index_expression&);
++  void visit_argument_list (tree_argument_list&);
++  void visit_simple_assignment (tree_simple_assignment&);
++  void visit_multi_assignment (tree_multi_assignment&);
++  void visit_indirect_ref (tree_indirect_ref&);
++  void visit_matrix (tree_matrix&);
++  void visit_cell (tree_cell&);
++  void visit_postfix_expression (tree_postfix_expression&);
++  void visit_prefix_expression (tree_prefix_expression&);
++  
++
++  // ***************
++
++  void visit_octave_user_function_header (octave_user_function&) {}
++
++  void visit_octave_user_function_trailer (octave_user_function&) {}
++
++  void visit_plot_limits (plot_limits&) {}
++
++  void visit_plot_range (plot_range&) {}
++
++  void visit_return_list (tree_return_list&) {}
++
++  void visit_subplot (subplot&) {}
++
++  void visit_subplot_axes (subplot_axes&) {}
++
++  void visit_subplot_list (subplot_list&) {}
++
++  void visit_subplot_style (subplot_style&) {}
++
++  void visit_subplot_using (subplot_using&) {}
++
++
++private:
++
++  FILE * f;
++
++  // Current indentation.
++  int indent;
++
++  // Must create with an output stream!
++
++  tree_dump (void);
++
++  // No copying!
++
++  tree_dump (const tree_dump&);
++
++  tree_dump& operator = (const tree_dump&);
++};
++
++#endif
++
++/*
++;;; Local Variables: ***
++;;; mode: C++ ***
++;;; End: ***
++*/
++
+diff -Nur octave-2.1.35/src/cp-pt.cc octave/src/cp-pt.cc
+--- octave-2.1.35/src/cp-pt.cc	Thu Jan  1 01:00:00 1970
++++ octave/src/cp-pt.cc	Fri Feb  7 13:06:13 2003
+@@ -0,0 +1,861 @@
++// -*-c++-*-
++
++// Gordon's source file
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <stdio.h>
++
++#include <string>
++
++#include <rna/rna.h>
++
++#include "pt-walk.h"
++
++#include "ov-usr-fcn.h"
++#include "pt-misc.h"
++#include "pt-decl.h"
++#include "pt-stmt.h"
++
++#include "pt-cmd.h"
++#include "pt-jump.h"
++#include "pt-loop.h"
++#include "pt-select.h"
++
++#include "pt-binop.h"
++#include "pt-colon.h"
++#include "pt-except.h"
++#include "pt-id.h"
++#include "pt-const.h"
++#include "pt-assign.h"
++#include "pt-idx.h"
++#include "pt-mat.h"
++#include "pt-cell.h"
++#include "pt-indir.h"
++#include "pt-unop.h"
++
++#include "pt-arg-list.h"
++#include "comment-list.h"
++#include "symtab.h"
++
++#include "cp.h"
++#include "cp-air.h"
++
++using namespace RNA;
++
++struct cmmt {
++    octave_comment_list *   list;
++    char *                  label;
++};
++
++Rna
++compiler_air::emit_octave_user_function (octave_user_function& item)
++{
++    char * old_src_filename = src_filename;
++
++    src_filename=m->alloc0(item.fcn_file_name().c_str());
++
++    Rna rna = TreeFunction::Create
++            (m, TreeDef::Create (m, m->alloc0(item.fcn_name.c_str ())),
++            emit_parameter_list (*item.parameter_list ()),
++            emit_parameter_list (*item.return_list ()),
++            emit_statement_list (*item.body ()));
++
++    if ( item.leading_comment() )
++        rna["leading-comment"] = emit_comment_list(item.leading_comment());
++
++    if ( item.trailing_comment() )
++        rna["trailing-comment"] = emit_comment_list(item.trailing_comment());
++
++    // FIXME: get starting row & col info of the function from somewhere
++    rna["src-info"] = SrcInfo::Create (m, src_filename, 1, 1);
++    
++    src_filename=old_src_filename;
++
++    return rna;
++}
++
++Rna
++compiler_air::emit_parameter_list (tree_parameter_list& item)
++{
++    if (&item == 0)
++	return Rna::Null ();
++
++//    RNA_ASSERT (!item.takes_varargs ());
++
++    Rna result = RNA::Array::Create (m, item.length (), RECORD);
++    int i = 0;
++    for (Pix p = item.first (); p; item.next (p))
++	result [i++] = TreeDef::Create (m,
++					m->alloc0(item(p)->name().c_str ()));
++
++    return result;
++}
++
++Rna
++compiler_air::emit_statement_list (tree_statement_list& item)
++{
++    Rna array = RNA::Array::Create (m, item.length (), RECORD);
++    Rna result = TreeSeq::Create (m, array);
++
++    int i;
++    Pix p;
++
++    for ( i = 0, p = item.first (); p; item.next (p), i++ ) {
++
++        Rna stmt = emit_statement(*item(p));
++        array[i] = stmt;
++
++        if ( (*item(p)).comment_text() )
++            stmt["comment"] = emit_comment_list((*item(p)).comment_text());
++
++        // FIXME: obtain file name info of the current statement from somewhere
++        if ( (*item(p)).expression() )
++            stmt["src-info"] = SrcInfo::Create
++		(m, src_filename,
++		 (*item (p)).line (), (*item (p)).column ());
++    }
++
++    Memory * m2 = new Memory;
++    int new_length = 0;
++    m2->startArray (0, RECORD);
++    cleanup_statement_list_rec (array, m2, new_length);    
++    RNA::Array * array2 = m2->finishArray ();
++    array2->setLength (new_length);
++    
++    return TreeSeq::Create (m, array2);
++}
++
++void
++compiler_air::cleanup_statement_list_rec (RNA::Array * array, RNA::Memory * m2, int & new_length)
++{
++    for (int i = 0; i < array->getLength(); i++)
++	if (TreeSeq::IsA (array->at (i)))
++	    cleanup_statement_list_rec 
++		(TreeSeq::Convert (array->at(i))->get_list (),
++		 m2, new_length);
++	else if (!array->at (i).isNull ()) {
++	    m2->grow (array->at (i));
++	    new_length++;
++	}
++}
++
++class tree_switch_emit_function
++    : public tree_walker
++{
++public:
++    tree_switch_emit_function (compiler_air * cp)
++	: compiler (cp),
++	  result (Rna::Null()) {}
++
++    void visit_argument_list (tree_argument_list& item) {
++	result = compiler->emit_argument_list (item); };
++    void visit_binary_expression (tree_binary_expression& item) {
++	result = compiler->emit_binary_expression (item); };
++    void visit_break_command (tree_break_command& item) {
++	result = compiler->emit_break_command (item); };
++    void visit_cell (tree_cell&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_colon_expression (tree_colon_expression& item) {
++	result = compiler->emit_colon_expression (item); };
++    void visit_complex_for_command (tree_complex_for_command&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_constant (tree_constant& item) {
++	result = compiler->emit_constant(item); };
++    void visit_continue_command (tree_continue_command& item) {
++	result = compiler->emit_continue_command (item); };
++    void visit_decl_command (tree_decl_command& item) {
++	result = compiler->emit_decl_command(item); }
++    void visit_decl_elt (tree_decl_elt& item) {
++	result = compiler->emit_decl_elt(item); };
++    void visit_decl_init_list (tree_decl_init_list& item) {
++	result = compiler->emit_decl_init_list(item); };
++    void visit_do_until_command (tree_do_until_command& item) {
++	result = compiler->emit_do_until_command (item); };
++    void visit_identifier (tree_identifier& item) {
++	result = compiler->emit_identifier(item); };
++    void visit_if_clause (tree_if_clause& item) {
++	result = compiler->emit_if_clause(item); };
++    void visit_if_command (tree_if_command& item) {
++	result = compiler->emit_if_command (item); };
++    void visit_if_command_list (tree_if_command_list& item) {
++	result = compiler->emit_if_command_list (item); };
++    void visit_index_expression (tree_index_expression& item) {
++	result = compiler->emit_index_expression (item); };
++    void visit_indirect_ref (tree_indirect_ref& item) {
++	result = compiler->emit_indirect_ref (item); };
++    void visit_matrix (tree_matrix& item) {
++	result = compiler->emit_matrix (item); };
++    void visit_multi_assignment (tree_multi_assignment& item) {
++	result = compiler->emit_multi_assignment (item); };
++    void visit_no_op_command (tree_no_op_command&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_octave_user_function (octave_user_function&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_parameter_list (tree_parameter_list&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_plot_command (tree_plot_command&) {
++	RNA_SHOULD_NOT_REACH_HERE;  };
++    void visit_plot_limits (plot_limits&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_plot_range (plot_range&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_postfix_expression (tree_postfix_expression& item) {
++	result = compiler->emit_postfix_expression (item);};
++    void visit_prefix_expression (tree_prefix_expression& item) {
++	result = compiler->emit_prefix_expression (item);};
++    void visit_return_command (tree_return_command& item) {
++	result = compiler->emit_return_command (item);};
++    void visit_return_list (tree_return_list&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_simple_assignment (tree_simple_assignment& item) {
++	result = compiler->emit_simple_assignment (item); };
++    void visit_simple_for_command (tree_simple_for_command& item) {
++	result = compiler->emit_simple_for_command (item); };
++    void visit_statement (tree_statement&) {
++	RNA_SHOULD_NOT_REACH_HERE;};
++    void visit_statement_list (tree_statement_list&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_subplot (subplot&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_subplot_axes (subplot_axes&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_subplot_list (subplot_list&) {
++	RNA_SHOULD_NOT_REACH_HERE;};
++    void visit_subplot_style (subplot_style&) {
++	RNA_SHOULD_NOT_REACH_HERE;};
++    void visit_subplot_using (subplot_using&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_switch_case (tree_switch_case& item) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_switch_case_list (tree_switch_case_list& item) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_switch_command (tree_switch_command& item) {
++	result = compiler->emit_switch_command (item); };
++    void visit_try_catch_command (tree_try_catch_command&) {
++	RNA_SHOULD_NOT_REACH_HERE; };
++    void visit_unwind_protect_command (tree_unwind_protect_command& item) {
++	result = compiler->emit_unwind_protect_command (item); };
++    void visit_while_command (tree_while_command& item) {
++	result = compiler->emit_while_command (item); };
++
++    compiler_air * compiler;
++    Rna result;
++};
++
++Rna
++compiler_air::emit_statement (tree_statement& item)
++{
++    if (item.command ()) {
++	return emit_command (*item.command());
++    }
++    else if (item.expression ()){
++	return emit_expression (*item.expression());
++    }
++
++    return Rna::Null ();
++}
++
++Rna
++compiler_air::emit_command (tree_command& item)
++{
++    tree_switch_emit_function tsef (this);
++    item.accept (tsef);
++
++    return tsef.result;
++}
++
++Rna
++compiler_air::emit_expression (tree_expression& item)
++{
++    tree_switch_emit_function tsef (this);
++    item.accept (tsef);
++
++    return tsef.result;
++}
++
++Rna
++compiler_air::emit_identifier (tree_identifier& item)
++{
++    return TreeVar::Create (m, m->alloc0(item.name().c_str ()));
++}
++
++Rna compiler_air::emit_symbol_table (symbol_table&){}
++Rna compiler_air::emit_symbol (symbol_record&){}
++
++RNA::Array * compiler_air::emit_comment_list (octave_comment_list* list)
++{
++    RNA::Array * a = RNA::Array::Create(m, list->length(), RNA::STR);
++
++    int i;
++    Pix p;
++    for ( i = 0, p = list->first(); p != NULL; list->next(p), i++ )
++        a->atPut(i, m->alloc0(list->operator () (p).text().c_str()));
++
++    return a;
++}
++
++Rna compiler_air::emit_comment (octave_comment_elt&){}
++
++Rna
++compiler_air::emit_break_command (tree_break_command& item)
++{
++    return TreeBreak::Create (m);
++}
++
++Rna
++compiler_air::emit_continue_command (tree_continue_command&)
++{
++    return TreeContinue::Create (m);
++}
++
++Rna
++compiler_air::emit_return_command (tree_return_command&)
++{
++    return TreeReturn::Create (m);
++}
++
++Rna
++compiler_air::emit_no_op_command (tree_no_op_command&)
++{
++    return Rna::Null ();
++}
++
++Rna
++compiler_air::emit_simple_for_command (tree_simple_for_command& item)
++{
++    Rna rna = emit_expression (*item.left_hand_side ());
++    assert (TreeVar::IsA (rna));
++    TreeVar * var = TreeVar::Convert (rna);
++    Rna name = var->get_name ();
++
++    return TreeFor::Create (m, TreeDef::Create (m, name),
++			    emit_expression (*item.control_expr ()),
++			    emit_statement_list (*item.body ()));
++}
++
++Rna compiler_air::emit_complex_for_command (tree_complex_for_command&){}
++
++Rna
++compiler_air::emit_while_command (tree_while_command & item)
++{
++    return TreeWhile::Create (m, emit_expression (* item.condition ()),
++			      emit_statement_list (* item.body ()));
++}
++
++Rna
++compiler_air::emit_do_until_command (tree_do_until_command& item)
++{
++    Rna array = RNA::Array::Create (m, 2, RECORD);
++    Rna result = TreeSeq::Create (m, array);
++    Rna args = RNA::Array::Create (m, 1, RECORD);
++    args [0] = emit_expression (*item.condition());
++    array [0] = emit_statement_list (* item.body ());
++    array [1] = TreeWhile::Create (m, TreeOp::Create (m, "!", args),
++				   emit_statement_list (* item.body ()));
++
++    return result;
++}
++
++Rna
++compiler_air::emit_if_command (tree_if_command& item)
++{
++    return emit_if_command_list (* item.cmd_list());
++}
++
++Rna
++compiler_air::emit_if_command_list (tree_if_command_list& item)
++{
++    switch (if_mode) {
++        case IF_MODE_TREE: {
++            Rna array = RNA::Array::Create (m, item.length (), RECORD);
++            TreeIf * my_if = 0;
++            Rna var, var2 = Rna::Null ();
++            int i = 0;
++            for (Pix p = item.first (); p; item.next (p))
++	        array [i++] = emit_if_clause (*item (p));
++            for (i = item.length () -1; i > 0; i--){
++	        var = array [i-1];
++	        var2 = array [i];
++	        my_if = TreeIf::Convert (var);
++	        RNA_ASSERT (my_if != 0);
++	        my_if->set_fbody (var2);
++            }
++            return my_if;
++	    break;
++	    }
++
++        case IF_MODE_LIST: {
++            Rna array = RNA::Array::Create (m, item.length (), RECORD);
++	    Rna elsebody = Rna::Null ();
++            int i = 0;
++            for (Pix p = item.first (); p; item.next (p)) {
++                if (TreeElseif::IsA (emit_if_clause (*item (p)))) {
++	            array [i++] = emit_if_clause (*item (p));
++                } else if (TreeElse::IsA (emit_if_clause (*item (p)))) {
++		    elsebody = emit_if_clause (*item (p));
++		    RNA_ASSERT(i == item.length ()-1);
++		    array.readArray ()->setLength (item.length ()-1);
++		} else {
++		    RNA_SHOULD_NOT_REACH_HERE;
++		    return Rna::Null ();
++		}
++            }
++            return TreeIfs::Create (m, array, elsebody);
++	    break;
++	    }
++
++        default: {
++            RNA_SHOULD_NOT_REACH_HERE;
++	    return Rna::Null ();
++        }
++    }
++}
++
++Rna
++compiler_air::emit_if_clause (tree_if_clause& item)
++{
++    switch (if_mode) {
++        case IF_MODE_TREE: {
++            Rna falsebody = Rna::Null ();
++            if (item.is_else_clause ()){
++	        return emit_statement_list (* item.commands());
++            }
++            else{
++	        return TreeIf::Create (m, emit_expression (* item.condition()),
++			       emit_statement_list (* item.commands()),
++			       falsebody);
++            break;
++            }
++        }
++        case IF_MODE_LIST: {
++            if (item.is_else_clause ()){
++	        return TreeElse::Create (m, emit_statement_list (* item.commands()));
++            }
++            else{
++	        return TreeElseif::Create (m, emit_expression (* item.condition()),
++			       emit_statement_list (* item.commands()));
++            }
++            break;
++        }
++
++        default: {
++            RNA_SHOULD_NOT_REACH_HERE;
++	    return Rna::Null ();
++        }
++    }
++}
++
++Rna
++compiler_air::emit_switch_command (tree_switch_command& item)
++{
++    return emit_switch_case_list (* item.case_list(), * item.switch_value() );
++}
++
++Rna
++compiler_air::emit_switch_case_list (tree_switch_case_list& item, tree_expression& switch_value)
++{
++    switch (switch_mode) {
++    case SWITCH_MODE_ON: {
++	Rna array = RNA::Array::Create (m, item.length (), RECORD);
++	Rna otherwise = Rna::Null ();
++	int i = 0;
++	for (Pix p = item.first (); p; item.next (p)) {
++	    array [i++] = emit_switch_case (*item (p), switch_value);
++	    if (TreeSeq::IsA (emit_switch_case (*item (p), switch_value))) {
++		otherwise = emit_switch_case (*item (p), switch_value);
++		RNA_ASSERT (i == item.length ());
++		array.readArray ()->setLength (item.length ()-1);
++	    }
++	}
++	return TreeSwitch::Create (m, emit_expression (switch_value), array, otherwise);
++	break;
++    }
++    case SWITCH_MODE_OFF: {
++	switch (if_mode) {
++	case IF_MODE_TREE: {
++	    Rna array = RNA::Array::Create (m, item.length (), RECORD);
++	    TreeIf * my_if = 0;
++	    Rna var, var2 = Rna::Null ();
++	    int i = 0;
++	    for (Pix p = item.first (); p; item.next (p))
++		array [i++] = emit_switch_case (*item (p), switch_value);
++	    for (i = item.length () -1; i > 0; i--) {
++		var = array [i-1];
++		var2 = array [i];
++		my_if = TreeIf::Convert (var);
++		RNA_ASSERT (my_if != 0);
++		my_if->set_fbody (var2);
++	    }
++	    return my_if;
++	    break;
++	}
++	case IF_MODE_LIST: {
++	    Rna array = RNA::Array::Create (m, item.length (), RECORD);
++	    Rna elsebody = Rna::Null ();
++	    int i = 0;
++	    for (Pix p = item.first (); p; item.next (p)) {
++		if (TreeElseif::IsA (emit_switch_case (*item (p), switch_value))) {
++		    array [i++] = emit_switch_case (*item (p), switch_value);
++		} else if (TreeElse::IsA (emit_switch_case (*item (p), switch_value))) {
++		    elsebody = emit_switch_case (*item (p), switch_value);
++		    RNA_ASSERT(i == item.length ()-1);
++		    array.readArray ()->setLength (item.length ()-1);
++		} else {
++		    RNA_SHOULD_NOT_REACH_HERE;
++		    return Rna::Null ();
++		}
++	    }
++	    return TreeIfs::Create (m, array, elsebody);
++	    break;
++	}
++	default: {
++	    RNA_SHOULD_NOT_REACH_HERE;
++	    return Rna::Null ();
++	}
++	    break;
++	}
++    }
++    default: {
++	RNA_SHOULD_NOT_REACH_HERE;
++	return Rna::Null ();
++    }
++    }
++}
++
++Rna compiler_air::emit_switch_case (tree_switch_case& item, tree_expression& switch_value)
++{
++    switch (switch_mode) {
++    case SWITCH_MODE_ON: {
++	Rna array = RNA::Array::Create (m, 1, RECORD);
++	if (item.is_default_case ()) {
++	    array[0] = emit_statement_list (* item.commands());
++	    return TreeSeq::Create (m, array);
++	} else {
++	    return TreeCase::Create (m, emit_expression (* item.case_label()),
++				     emit_statement_list (* item.commands()));
++	}
++	break;
++    }
++    case SWITCH_MODE_OFF: {
++	switch (if_mode) {
++        case IF_MODE_TREE: {
++            Rna falsebody = Rna::Null ();
++            Rna array = RNA::Array::Create (m, 2, RECORD);
++            if (item.is_default_case ()) {
++	        return emit_statement_list (* item.commands());
++            } else {
++	        array [0] = emit_expression (switch_value);
++	        array [1] = emit_expression (* item.case_label());
++	        return TreeIf::Create (m,
++				       TreeOp::Create (m, "==", array),
++				       emit_statement_list (* item.commands()),
++				       falsebody);
++            }
++            break;
++        }
++        case IF_MODE_LIST: {
++            Rna array = RNA::Array::Create (m, 2, RECORD);
++            if (item.is_default_case ()) {
++	        return TreeElse::Create (m, emit_statement_list (* item.commands()));
++            } else {
++	        array [0] = emit_expression (switch_value);
++	        array [1] = emit_expression (* item.case_label());
++	        return TreeElseif::Create (m,
++					   TreeOp::Create (m, "==", array),
++					   emit_statement_list (* item.commands()));
++            }
++	    break;
++	}
++	default: {
++            RNA_SHOULD_NOT_REACH_HERE;
++	    return Rna::Null ();
++        }
++	break;
++	}
++    }
++    default: {
++	RNA_SHOULD_NOT_REACH_HERE;
++	return Rna::Null ();
++    }
++    }
++}
++
++Rna
++compiler_air::emit_decl_command (tree_decl_command& item)
++{
++    return emit_decl_init_list(*item.initializer_list());
++}
++
++Rna
++compiler_air::emit_decl_init_list (tree_decl_init_list& item)
++{
++    Rna array = RNA::Array::Create (m, item.length (), RECORD);
++    Rna result = TreeSeq::Create (m, array);
++    int i = 0;
++    for (Pix p = item.first (); p; item.next (p))
++	array [i++] = emit_decl_elt (*item (p));
++
++    return result;
++}
++
++Rna
++compiler_air::emit_decl_elt (tree_decl_elt& item)
++{
++    if (item.expression() != 0){
++	Rna array = RNA::Array::Create (m, 2, RECORD);
++	Rna result = TreeSeq::Create (m, array);
++	array [0] = TreeDef::Create (m , m->alloc0( item.ident ()->name().c_str()));
++	array [1] = TreeAssign::Create (m, emit_identifier (*item.ident ()),
++					"=",
++					emit_expression (*item.expression ()));
++	return result;
++    }
++    else{
++	return TreeDef::Create (m , m->alloc0(item.ident ()->name().c_str()));
++    }
++}
++
++Rna compiler_air::emit_plot_command (tree_plot_command&){}
++Rna compiler_air::emit_try_catch_command (tree_try_catch_command&){}
++
++Rna
++compiler_air::emit_unwind_protect_command (tree_unwind_protect_command& item)
++{
++    return TreeUnwindProtect::Create
++	(m,
++	 emit_statement_list (*item.body ()),
++	 emit_statement_list (*item.cleanup ()));
++}
++
++Rna
++compiler_air::emit_binary_expression (tree_binary_expression& item)
++{
++    Rna args = RNA::Array::Create (m, 2, RECORD);
++    args [0] = emit_expression (*item.lhs());
++    args [1] = emit_expression (*item.rhs());
++
++    return TreeOp::Create (m,
++			   m->alloc0 (item.oper ().c_str()),
++			   args);
++}
++
++Rna
++compiler_air::emit_colon_expression (tree_colon_expression& item)
++{
++    return TreeRange::Create
++	(m, emit_expression (*item.base()),
++	 item.increment() ? emit_expression (*item.increment())
++	 : Rna (ValueInt::Create (m, 1)),
++	 emit_expression (*item.limit()));
++}
++
++Rna
++compiler_air::double2value (double dd)
++{
++    int ii = int(dd);
++    if (dd == double(ii)) {
++	return ValueInt::Create (m, Int (ii));
++    } else {
++	return ValueFloat::Create (m, Float (dd));
++    }
++}
++
++Rna
++compiler_air::emit_constant (tree_constant& item)
++{
++    octave_value ov = item.rvalue();
++    if (debug_mode) {
++	printf(ov.is_range () ? "is_range () = true\n" : "");
++	printf(ov.is_complex_scalar () ? "is_complex_scalar () = true\n" : "");
++	printf(ov.is_magic_colon () ? "is_magic_colon () = true\n" : "");
++	printf(ov.is_string () ? "is_string () = true\n" : "");
++	printf(ov.is_real_matrix () ? "is_real_matrix () = true\n" : "");
++	printf(ov.is_complex_matrix () ? "is_complex_matrix () = true\n" : "");
++	printf(ov.is_scalar_type () ? "is_scalar_type () = true\n" : "");
++	printf(ov.is_char_matrix () ? "is_char_matrix () = true\n" : "");
++	printf(ov.is_matrix_type () ? "is_matrix_type () = true\n" : "");
++	printf(ov.is_map () ? "is_map () = true\n" : "");
++	printf(ov.is_real_scalar () ? "is_real_scalar () = true\n" : "");
++    }
++    if (ov.is_real_scalar ()) {
++	if (debug_mode)
++	    printf("ov.is_real_scalar() is reached\n");
++        return double2value (ov.double_value ());
++    } else if (ov.is_range ()) {
++	if (debug_mode)
++	    printf("ov.is_range() is reached\n");
++	Range range = ov.range_value ();
++	return TreeRange::Create (m, double2value (range.base ()),
++				  double2value (range.inc ()),
++				  double2value (range.limit ()));
++    } else if (ov.is_magic_colon()){
++	if (debug_mode)
++	    printf("ov.is_magic_colon() is reached\n");
++	return TreeColon::Create (m);
++    } else if (ov.is_complex_scalar ()) {
++	if (debug_mode)
++	    printf("ov.is_complex_scalar() is reached\n");
++	Complex cx (ov.complex_value ());
++	return ValueComplex::Create (m, double2value (cx.real ()),
++				     double2value (cx.imag ()));
++    }/*
++      else if (ov.is_char_matrix ()){
++	if (debug_mode)
++	    printf("ov.is_char_matrix() is reached\n");
++	charMatrix chmx = ov.char_matrix_value ();
++	int rows = chmx.rows ();
++	int cols = chmx.cols ();
++	Rna row_array = RNA::Array::Create (m, rows, RNA::STR);
++	for (int i = 0; i < rows; i++) {
++	    std::string s = chmx.row_as_string (i);
++	    row_array[i] = m->alloc0(s.c_str());
++	}
++	return ValueMatrix::Create (m, row_array);
++	}*/ 
++      else if (ov.is_string ()){
++	return ValueString::Create (m, m->alloc0((ov.string_value ()).c_str ()));
++    } else if (ov.is_real_matrix () && ov.is_matrix_type ()){
++	if (debug_mode)
++	    printf("ov.is_real_matrix() is reached\n");
++	Matrix mx (ov.matrix_value ());
++	int rows = mx.rows ();
++	int cols = mx.cols ();
++	Rna row_array = RNA::Array::Create (m, rows, ARRAY);
++	for (int i = 0; i < rows; i++) {
++	    Rna row = RNA::Array::Create (m, cols, RECORD);
++	    for (int j = 0; j < cols; j++) {
++		row [j] = double2value (mx (i,j));
++	    }
++	    row_array [i] = row;
++	}
++	return ValueMatrix::Create (m, row_array);
++    } else if (ov.is_complex_matrix ()){
++	if (debug_mode)
++	    printf("ov.is_complex_matrix() is reached\n");
++	ComplexMatrix cmx (ov.complex_matrix_value ());
++	int rows = cmx.rows ();
++	int cols = cmx.cols ();
++	Rna row_array = RNA::Array::Create (m, rows, ARRAY);
++	for (int i = 0; i < rows; i++) {
++	    Rna row = RNA::Array::Create (m, cols, RECORD);
++	    for (int j = 0; j < cols; j++) {
++		Complex cx (cmx (i,j));
++		row [j] = ValueComplex::Create (m, double2value (cx.real ()),
++						double2value (cx.imag ()));
++	    }
++	    row_array [i] = row;
++	}
++	return ValueMatrix::Create (m, row_array);
++    }
++#if 0
++    else if (ov.is_map){
++	Octave_map map (ov.map_value());
++	int length = 0;
++	for (Pix p = map.first (); p; map.next (p))
++	    length++;
++	Rna array = RNA::Array::Create (m, length, RECORD);
++	int i = 0;
++	for (Pix p = map.first (); p; map.next (p)) {
++	    std::string key = map.key (p);
++	    char * key = map.key (p).c_str ();
++	    octave_value val = map.contents (p);
++	    Element * el = Element::Create (m, key, emit_constant (value));
++	    array [i++] = el;
++	}
++	return ValueStruct::Create (m, array);
++    } 
++#endif   
++    else {
++	RNA_SHOULD_NOT_REACH_HERE;
++    }
++    return Rna::Null();
++}
++
++Rna
++compiler_air::emit_index_expression (tree_index_expression& item)
++{
++    Rna args = Rna::Null ();
++    if (item.arg_list())
++	if (item.arg_list()->length() > 0) {
++	    args = RNA::Array::Create (m, item.arg_list()->length(), RECORD);
++	    int i = 0;
++	    for (Pix p = item.arg_list()->first (); p;  item.arg_list()->next (p))
++		args [i++] = emit_expression (*(*item.arg_list())(p));
++	}
++
++    return TreeSubscript::Create (m, emit_expression (*item.expression ()), args);
++}
++
++Rna
++compiler_air::emit_simple_assignment (tree_simple_assignment& item)
++{
++    return TreeAssign::Create (m, emit_expression (*item.left_hand_side ()),
++			       m->alloc0 (item.oper ().c_str()),
++			       emit_expression (*item.right_hand_side ()));
++}
++
++Rna 
++compiler_air::emit_multi_assignment (tree_multi_assignment& item)
++{
++    return TreeAssignMultiple::Create 
++	(m, emit_argument_list (*item.left_hand_side ()),
++	 m->alloc0 (item.oper ().c_str()),
++	 emit_expression (*item.right_hand_side ()));
++}
++
++Rna 
++compiler_air::emit_argument_list (tree_argument_list& item)
++{
++    Rna args = RNA::Array::Create (m, item.length(), RECORD);
++
++    int i = 0;
++    for (Pix p = item.first (); p; item.next (p))
++	args [i++] = emit_expression (*item (p));
++
++    return args;
++}
++
++Rna 
++compiler_air::emit_indirect_ref (tree_indirect_ref& item)
++{
++    return TreePick::Create
++	(m, emit_expression (*item.expression ()),
++	 m->alloc0 (item.elt_name ().c_str ()));
++}
++
++Rna 
++compiler_air::emit_matrix (tree_matrix& item)
++{
++    Rna args = RNA::Array::Create (m, item.length(), ARRAY);
++
++    int i = 0;
++    for (Pix p = item.first (); p; item.next (p))
++	args [i++] = emit_argument_list (*item (p));
++
++    return TreeMatrix::Create (m, args);
++}
++
++Rna compiler_air::emit_cell (tree_cell&){}
++
++Rna
++compiler_air::emit_postfix_expression (tree_postfix_expression& item)
++{
++    Rna args = RNA::Array::Create (m, 1, RECORD);
++    args [0] = emit_expression (*item.operand());
++
++    return TreeOp::Create (m, m->alloc0 (item.oper ().c_str()),
++			   args);
++}
++
++Rna
++compiler_air::emit_prefix_expression (tree_prefix_expression& item)
++{
++    Rna args = RNA::Array::Create (m, 1, RECORD);
++    args [0] = emit_expression (*item.operand());
++
++    return TreeOp::Create (m, m->alloc0 (item.oper ().c_str()),
++			   args);
++}
+diff -Nur octave-2.1.35/src/cp.cc octave/src/cp.cc
+--- octave-2.1.35/src/cp.cc	Thu Jan  1 01:00:00 1970
++++ octave/src/cp.cc	Fri Sep 13 10:54:16 2002
+@@ -0,0 +1,67 @@
++// -*-c++-*-
++
++// Gordon's source file
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include "ov-usr-fcn.h"
++
++#include "cp.h"
++#include "cp-dump.h"
++#include "cp-air.h"
++
++bool do_compile = false;
++
++const char * dump_filename = NULL;
++
++compiler_air * active_compiler = 0;
++
++void
++init_compilation (const char * output_filename, 
++		  bool debug_mode, const char * output_format, const char * if_mode)
++{
++    printf ("init_compilation: %s, %s\n", output_filename, output_format);
++
++    RNA::Initialization::Initialize ();
++    RNA::Context * context = 0;
++    context = Mouse::TypeInitialize (context);
++    context = Mouse::ValueInitialize (context);
++    context = Mouse::TreeInitialize (context);
++
++    compiler_air::Initialize (context);
++
++    active_compiler = new compiler_air (output_filename,
++					debug_mode,
++                                        compiler_air::str2fmt(output_format),
++					compiler_air::str2ifmode(if_mode));
++}
++
++void 
++rest_of_compilation (octave_user_function *fcn)
++{
++    if (dump_filename || do_compile)
++	printf ("rest_of_compilation: %s\n",
++		fcn->function_name ().c_str ());
++    
++    if (dump_filename) {
++	FILE * f = fopen (dump_filename, "w");
++	tree_dump td (f);
++	fcn->accept (td);
++	fclose (f);
++    }
++
++    if (do_compile)
++	active_compiler->compile_function (fcn);
++}
++
++void 
++finish_compilation ()
++{
++    printf ("finish_compilation\n");
++
++    delete active_compiler;
++    active_compiler = 0;
++}
++
+diff -Nur octave-2.1.35/src/cp.h octave/src/cp.h
+--- octave-2.1.35/src/cp.h	Thu Jan  1 01:00:00 1970
++++ octave/src/cp.h	Fri Sep 13 10:54:16 2002
+@@ -0,0 +1,31 @@
++// Compiler header file
++
++#if !defined (octave_compiler_h)
++#define octave_compiler_h 1
++
++class octave_user_function;
++
++// TRUE means we run inside the compiler.
++// (--compile)
++extern bool do_compile;
++
++// Filename for syntax tree dump
++// NULL means we don't dump the tree.
++// (--dump-tree)
++extern const char * dump_filename;
++
++void init_compilation (const char * output_filename, 
++		       bool debug_mode, const char * output_format, const char * if_mode);
++
++void rest_of_compilation (octave_user_function *fcn);
++
++void finish_compilation ();
++
++#endif
++
++/*
++;;; Local Variables: ***
++;;; mode: C++ ***
++;;; End: ***
++*/
++
+diff -Nur octave-2.1.35/src/octave.cc octave/src/octave.cc
+--- octave-2.1.35/src/octave.cc	Fri Nov  2 06:12:01 2001
++++ octave/src/octave.cc	Fri Sep 13 17:01:13 2002
+@@ -51,6 +51,19 @@
+ #include "str-vec.h"
+ 
+ #include <defaults.h>
++
++
++#if defined(WITH_ATERM)
++extern "C" {
++#include <aterm2.h>
++}
++#endif  // WITH_ATERM
++
++
++#if defined(WITH_RNA)
++#include "cp.h"
++#endif  // WITH_RNA
++
+ #include "defun.h"
+ #include "error.h"
+ #include "file-io.h"
+@@ -105,18 +118,67 @@
+ // (--verbose; -V)
+ static bool verbose_flag = false;
+ 
++
++#if defined(WITH_RNA)
++
++static const char * output_filename = "a.out";
++static const char * output_format = "aterm_text";
++static const char * if_mode="list";
++static bool debug_mode = false;
++
++#endif  //WITH_RNA
++
++
+ // Usage message
+ static const char *usage_string = 
+-  "octave [-?HVdfhiqvx] [--debug] [--echo-commands] [--exec-path path]\n\
++  "octave [-?HV"
++
++#if defined(WITH_RNA)
++
++              "acoD"
++
++#if defined(WITH_ATERM)
++
++                 "F"
++
++#endif  // WITH_ATERM
++#endif  // WITH_RNA
++
++                  "dfhiqrvx] [--debug] [--echo-commands] [--exec-path path]\n\
+        [--help] [--info-file file] [--info-program prog] [--interactive]\n\
+-       [--no-history] [--no-init-file] [--no-line-editing] [--no-site-file]\n\
+-       [-p path] [--path path] [--silent] [--traditional] [--verbose]\n\
++       [--no-history] [--no-init-file] [--no-line-editing] [--no-site-file]\n"
++
++#if defined(WITH_RNA)
++
++      "[--compile] [--dump-tree filename] [--debug-mode] [--output filename] [--if-mode mode]\n"
++
++#if defined(WITH_ATERM)
++
++      "[--format output_format]\n"
++
++#endif  // WITH_ATERM
++#endif  // WITH_RNA
++
++      "[-p path] [--path path] [--silent] [--traditional] [--verbose]\n\
+        [--version] [file]";
+ 
+ // This is here so that it's more likely that the usage message and
+ // the real set of options will agree.  Note: the `+' must come first
+ // to prevent getopt from permuting arguments!
+-static const char *short_opts = "+?HVdfhip:qvx";
++static const char *short_opts = "+?HV"
++
++#if defined(WITH_RNA)
++
++                                     "a:co:I:D"
++
++#if defined(WITH_ATERM)
++
++                                          "F:"
++
++#endif  // WITH_ATERM
++#endif  // WITH_RNA
++
++                                            "dfhip:qvx";
+ 
+ // Long options.  See the comments in getopt.h for the meanings of the
+ // fields in this structure.
+@@ -129,6 +191,22 @@
+ #define TRADITIONAL_OPTION 7
+ long_options long_opts[] =
+   {
++
++#if defined(WITH_RNA)
++
++    { "dump-tree",        prog_args::required_arg, 0, 'a' },
++    { "compile",          prog_args::no_arg,       0, 'c' },
++    { "output",           prog_args::required_arg, 0, 'o' },
++    { "if-mode",          prog_args::required_arg, 0, 'I' },
++    { "debug-mode",       prog_args::no_arg,       0, 'D' },
++
++#if defined(WITH_ATERM)
++
++    { "format",           prog_args::required_arg, 0, 'F' },
++
++#endif  // WITH_ATERM
++#endif  // WITH_RNA
++
+     { "debug",            prog_args::no_arg,       0, 'd' },
+     { "braindead",        prog_args::no_arg,       0, TRADITIONAL_OPTION },
+     { "echo-commands",    prog_args::no_arg,       0, 'x' },
+@@ -144,7 +222,7 @@
+     { "norc",             prog_args::no_arg,       0, 'f' },
+     { "path",             prog_args::required_arg, 0, 'p' },
+     { "quiet",            prog_args::no_arg,       0, 'q' },
+-    { "silent",           prog_args::no_arg,       0, 'q' },
++    { "silent",           prog_args::no_arg,       0, 's' },
+     { "traditional",      prog_args::no_arg,       0, TRADITIONAL_OPTION },
+     { "verbose",          prog_args::no_arg,       0, 'V' },
+     { "version",          prog_args::no_arg,       0, 'v' },
+@@ -274,8 +352,25 @@
+ Usage: octave [options]\n\
+ \n\
+ Options:\n\
+-\n\
+-  --debug, -d             Enter parser debugging mode.\n\
++\n "
++
++#if defined(WITH_RNA)
++
++" --dump-tree, -a FILE    Dump octave syntax tree into FILE.\n\
++  --compile, -c           Run as frontend to a compiler.\n\
++  --debug-mode, -D        Switches on debugging printfs.\n\
++  --output FILE, -o FILE  Set compilation output file.\n 
++  --if-mode MODE, -I MODE Set mode in which if statements are output.\n"
++
++#if defined(WITH_ATERM)
++
++" --format OUTPUT_FORMAT  Set output format to one of: rna (default),\n\
++                          aterm_text, aterm_baf, or aterm_taf)\n "
++
++#endif  // WITH_ATERM
++#endif  // WITH_RNA
++
++" --debug, -d             Enter parser debugging mode.\n\
+   --echo-commands, -x     Echo commands as they are executed.\n\
+   --exec-path PATH        Set path for executing subprograms.\n\
+   --help, -h, -?          Print short help message and exit.\n\
+@@ -402,11 +497,46 @@
+ 	  break;
+ 
+ 	case 'V':
++	  yydebug++;
+ 	  verbose_flag = true;
+ 	  break;
+ 
++
++#if defined(WITH_RNA)
++
++	case 'a':
++	  dump_filename = args.optarg();
++	  break;
++
++	case 'c':
++	  do_compile = true;
++	  break;
++
++    case 'o':
++	  if (args.optarg ())
++	    output_filename = args.optarg ();
++	  break;
++
++	case 'I':
++	    if_mode = args.optarg();
++	  break;
++
++	case 'D':
++	    debug_mode = true;
++	  break;
++
++#if defined(WITH_ATERM)
++
++    case 'F':
++      if (args.optarg ())
++        output_format = args.optarg ();
++      break;
++
++#endif  // WITH_ATERM
++#endif  // WITH_RNA
++
++
+ 	case 'd':
+-	  yydebug++;
+ 	  break;
+ 
+ 	case 'f':
+@@ -578,7 +708,32 @@
+   if (! interactive)
+     line_editing = false;
+ 
++
++#if defined(WITH_RNA)
++
++  if (do_compile)
++      init_compilation (output_filename, debug_mode, output_format, if_mode);
++
++#endif  // WITH_RNA
++
++
+   int retval = main_loop ();
++
++
++#if defined(WITH_RNA)
++
++#if defined(WITH_ATERM)
++
++  ATerm bos;
++  ATinit(argc, argv, &bos);
++
++#endif  // WITH_ATERM
++
++  if (do_compile)
++    finish_compilation ();
++
++#endif  // WITH_RNA
++
+ 
+   if (retval == 1 && ! error_state)
+     retval = 0;
+diff -Nur octave-2.1.35/src/ov-usr-fcn.h octave/src/ov-usr-fcn.h
+--- octave-2.1.35/src/ov-usr-fcn.h	Thu Apr 19 21:42:34 2001
++++ octave/src/ov-usr-fcn.h	Tue Apr  2 08:08:48 2002
+@@ -221,6 +221,9 @@
+   DECLARE_OV_TYPEID_FUNCTIONS_AND_DATA
+ 
+   DECLARE_OCTAVE_ALLOCATOR
++
++  friend class compiler_air;
++  friend class tree_dump;
+ };
+ 
+ #endif
+diff -Nur octave-2.1.35/src/parse.y octave/src/parse.y
+--- octave-2.1.35/src/parse.y	Fri Nov  2 06:12:01 2001
++++ octave/src/parse.y	Thu Sep  5 12:54:42 2002
+@@ -65,6 +65,8 @@
+ #include "utils.h"
+ #include "variables.h"
+ 
++#include "cp.h"
++
+ // TRUE means we print 
+ static bool Vdefault_eval_print_flag = true;
+ 
+@@ -1181,18 +1183,39 @@
+ function	: function_beg function2
+ 		  {
+ 		    $2->stash_leading_comment ($1);
++
++          #if defined(WITH_RNA)
++
++		    rest_of_compilation ($2);
++
++          #endif
++
+ 		    recover_from_parsing_function ();
+ 		    $$ = 0;
+ 		  }
+ 		| function_beg identifier function1
+ 		  {
+ 		    finish_function ($2, $3, $1);
++
++          #if defined(WITH_RNA)
++
++		    rest_of_compilation ($3);
++
++          #endif
++
+ 		    recover_from_parsing_function ();
+ 		    $$ = 0;
+ 		  }
+ 		| function_beg return_list function1
+ 		  {
+ 		    finish_function ($2, $3, $1);
++
++          #if defined(WITH_RNA)
++
++		    rest_of_compilation ($3);
++
++          #endif
++
+ 		    recover_from_parsing_function ();
+ 		    $$ = 0;
+ 		  }
+diff -Nur octave-2.1.35/src/pt-assign.h octave/src/pt-assign.h
+--- octave-2.1.35/src/pt-assign.h	Wed Feb  2 11:56:36 2000
++++ octave/src/pt-assign.h	Tue Apr  2 08:08:49 2002
+@@ -106,6 +106,9 @@
+   tree_simple_assignment (const tree_simple_assignment&);
+ 
+   tree_simple_assignment& operator = (const tree_simple_assignment&);
++
++  friend class compiler_air;
++  friend class tree_dump;
+ };
+ 
+ // Multi-valued assignment expressions.
+@@ -166,6 +169,9 @@
+   tree_multi_assignment (const tree_multi_assignment&);
+ 
+   tree_multi_assignment& operator = (const tree_multi_assignment&);
++
++  friend class compiler_air;
++  friend class tree_dump;
+ };
+ 
+ #endif
+diff -Nur octave-2.1.35/src/pt-binop.h octave/src/pt-binop.h
+--- octave-2.1.35/src/pt-binop.h	Wed Feb  2 11:26:12 2000
++++ octave/src/pt-binop.h	Tue Apr  2 08:08:50 2002
+@@ -94,6 +94,9 @@
+   tree_binary_expression (const tree_binary_expression&);
+ 
+   tree_binary_expression& operator = (const tree_binary_expression&);
++
++  friend class compiler_air;
++  friend class tree_dump;
+ };
+ 
+ // Boolean expressions.
+diff -Nur octave-2.1.35/src/pt-id.h octave/src/pt-id.h
+--- octave-2.1.35/src/pt-id.h	Wed Feb  2 11:26:15 2000
++++ octave/src/pt-id.h	Tue Apr  2 08:08:50 2002
+@@ -104,6 +104,9 @@
+   tree_identifier (const tree_identifier&);
+ 
+   tree_identifier& operator = (const tree_identifier&);
++
++  friend class compiler_air;
++  friend class tree_dump;
+ };
+ 
+ #endif
+diff -Nur octave-2.1.35/src/pt-stmt.h octave/src/pt-stmt.h
+--- octave-2.1.35/src/pt-stmt.h	Thu Apr 19 21:42:35 2001
++++ octave/src/pt-stmt.h	Tue Apr  2 08:08:48 2002
+@@ -149,6 +149,9 @@
+   tree_statement_list (const tree_statement_list&);
+ 
+   tree_statement_list& operator = (const tree_statement_list&);
++
++    friend class compiler_air;
++    friend class tree_dump;
+ };
+ 
+ // Pointer to the current statement being executed.
+diff -Nur octave-2.1.35/src/pt-unop.h octave/src/pt-unop.h
+--- octave-2.1.35/src/pt-unop.h	Wed Feb  2 11:26:17 2000
++++ octave/src/pt-unop.h	Tue Apr  2 08:08:48 2002
+@@ -75,6 +75,9 @@
+   tree_unary_expression (const tree_unary_expression&);
+ 
+   tree_unary_expression& operator = (const tree_unary_expression&);
++
++  friend class compiler_air;
++  friend class tree_dump;
+ };
+ 
+ // Prefix expressions.
+diff -Nur octave-2.1.35/src/symtab.h octave/src/symtab.h
+--- octave-2.1.35/src/symtab.h	Wed Feb  2 11:26:18 2000
++++ octave/src/symtab.h	Tue Apr  2 08:08:49 2002
+@@ -373,6 +373,9 @@
+   symbol_record (const symbol_record& s);
+ 
+   symbol_record& operator = (const symbol_record& s);
++
++  friend class compiler_air;
++  friend class tree_dump;
+ };
+ 
+ // A symbol table.
+@@ -459,6 +462,9 @@
+   symbol_table (const symbol_table&);
+ 
+   symbol_table& operator = (const symbol_table&);
++
++    friend class compiler_air;
++    friend class tree_dump;
+ };
+ 
+ #endif
+diff -Nur octave-2.1.35/test/.cvsignore octave/test/.cvsignore
+--- octave-2.1.35/test/.cvsignore	Thu Jan  1 01:00:00 1970
++++ octave/test/.cvsignore	Tue Apr  2 08:08:52 2002
+@@ -0,0 +1 @@
++Makefile

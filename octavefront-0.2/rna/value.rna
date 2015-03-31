@@ -1,0 +1,65 @@
+# RNA 1.0 ASCII
+
+#
+# $Author: mouse-gc $
+# $Date: 2003/05/27 11:08:43 $
+# $Source: /srv/cvs/mns-mouse-gc/octave/rna/value.rna,v $
+# $Revision: 1.7 $
+#
+
+#################################################################
+#
+# Values for Constants and Immediates
+#
+#################################################################
+
+module-value: (Module "module-value" 
+	cpp_path_prefix="$RNA_DIR"
+	cpp_header_path_prefix="include"
+	cpp_header_path="class"
+	cpp_inline_path="inline"
+	cpp_source_path="src"
+	cpp_decl_filename="mouse-value.h"
+	cpp_init_filename="value-init.cc"
+	cpp_make_filename="build/Makefile.value"
+	cpp_namespace="Mouse"
+	cpp_module_prefix="Value"
+	cpp_lib_filename="lib/libvalue.a"
+	stratego_filename="value.stratego"
+[
+
+value-function: (TypeDescriptor "value-function" 1 "A" ["def"] 
+	types=[tree-function]
+	at_name="Func" at_type="Exp")
+value-struct: (TypeDescriptor "value-struct" 1 "B" ["elements"] 
+	types=[element] at_name="Struct")
+element: (TypeDescriptor "element" 2 "sA" ["name" "value"] 
+	types=[nil value]
+	at_name="Element")
+value-string: (TypeDescriptor "value-string" 1 "s" ["value"]
+	at_name="String")
+
+value-bool: (TypeDescriptor "value-bool" 1 "b" ["value"] at_name="Bool")
+value-int: (TypeDescriptor "value-int" 1 "i" ["value"]
+            at_name="Int" at_type="Exp")
+value-fixed: (TypeDescriptor "value-fixed" 1 "i" ["value"] at_name="Fixed")
+value-float: (TypeDescriptor "value-float" 1 "f" ["value"] at_name="Float")
+value-complex: (TypeDescriptor "value-complex" 2 "AA" ["real" "img"]
+                types=[value value]
+                at_name="Complex" at_type="Exp")
+value-vector: (TypeDescriptor "value-vector" 1 "B" ["values"] 
+	types=[value]
+	at_name="Vector")
+value-matrix: (TypeDescriptor "value-matrix" 1 "B" ["rows"] 
+	types=[value-vector]
+	at_name="Matrix")
+value-tensor: (TypeDescriptor "value-tensor" 1 "B" 
+	["values"] 
+	types=[value]
+	at_name="Tensor")
+
+value: (Variant "value" [value-function value-struct
+	value-bool value-int value-fixed value-float value-complex 
+	value-vector value-matrix value-tensor])
+
+])
