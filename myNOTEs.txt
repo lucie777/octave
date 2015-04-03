@@ -1,0 +1,25 @@
+sudo apt-get install gfortran
+sudo apt-get install libpcre3-dev
+sudo apt-get install libfreetype6-dev
+sudo apt-get install liblapack-dev
+sudo apt-get install libblas-dev
+sudo apt-get install $( apt-cache search octave-forge | awk '{printf $1; printf " "}' )
+
+#sudo apt-get build-dep octave
+#sudo apt-get build-dep octave3.2
+#./configure F77="gfortran" 
+
+make distclean
+./configure
+make
+make install
+
+#in example
+../src/mkoctfile oct_demo.cc
+#testing oct_demo
+/usr/local/bin/octave oct_demo ("easy as", 1, 2, 3)
+
+parse.y //rna
+cp     .h .cc
+cp-air .h .cc
+
