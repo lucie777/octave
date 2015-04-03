@@ -81,7 +81,7 @@ function data_out = ofdm_decode (data_in)
   %% Visualization
   if VISUALIZATION.spectrum
     figure(VISUALIZATION.figure.spectrum);
-    gset title "signal spectrum";
-    gplot abs(data_out) title 'abs' with impulses, ...
-	arg(data_out) title 'arg' with points;
+    %%gset title "signal spectrum";
+    %%gplot abs(data_out) title 'abs' with impulses, ...
+	%%arg(data_out) title 'arg' with points;
   end

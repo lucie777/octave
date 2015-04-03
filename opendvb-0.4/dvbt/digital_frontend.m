@@ -29,9 +29,9 @@ function output = digital_frontend (input)
   %% Visualization
   if VISUALIZATION.signal 
     figure(VISUALIZATION.figure.signal);
-    gset title "channel signal";
-    gplot real(input) title 'real' with lines, ...
-	imag(input) title 'imag' with lines;
+    %%gset title "channel signal";
+    %%gplot real(input) title 'real' with lines, ...
+	%%imag(input) title 'imag' with lines;
   end
 
   input = gain_control (input);

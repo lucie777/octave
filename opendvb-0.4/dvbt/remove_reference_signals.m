@@ -99,8 +99,8 @@ function data_out = remove_reference_signals (data_in)
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   if VISUALIZATION.spectrum2
     figure(VISUALIZATION.figure.spectrum2);
-    gset title "QAM points";
-    my_points=[real(data_out) imag(data_out)];
-    gplot my_points title 'QAM points' with points;
+    %%gset title "QAM points";
+    %%my_points=[real(data_out) imag(data_out)];
+    %%gplot my_points title 'QAM points' with points;
   end
 

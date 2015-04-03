@@ -29,6 +29,7 @@ clear all;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialization routines
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 dump_open;
 global_settings;
 visualization_settings;
@@ -38,6 +39,7 @@ dvbt_receive_init;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Import globals
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+global iarg;
 global DUMP;
 global DVBT_SETTINGS;
 
@@ -46,9 +48,9 @@ global DVBT_SETTINGS;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 n = DVBT_SETTINGS.packet_length.mux;
 
-input_file = my_fopen ([DUMP.SETTINGS.ref_dir '/5-superframes/test.ts'], 'r');
-%input_file = my_fopen ([DUMP.SETTINGS.ref_dir '/random.ts'], 'r');
-%input_file = my_fopen ([DUMP.SETTINGS.ref_dir '/sequence.ts'], 'r');
+%input_file = fopen ([DUMP.SETTINGS.ref_dir '/5-superframes/test.ts'], 'r');
+input_file = fopen ([DUMP.SETTINGS.ref_dir '/random.ts'], 'r');
+%input_file = fopen ([DUMP.SETTINGS.ref_dir '/sequence.ts'], 'r');
 
 compare_queue = [];
 
