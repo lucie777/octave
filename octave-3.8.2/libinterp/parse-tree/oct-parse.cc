@@ -4939,6 +4939,7 @@ yyreduce:
     {
                     (yyval.tree_command_type) = parser.finish_function (0, (yyvsp[0].octave_user_function_type), (yyvsp[-1].comment_type), (yyvsp[-2].tok_val)->line (),
                                                  (yyvsp[-2].tok_val)->column ());
+		    printf("------------PARSER: %s\n", yyvsp[0].octave_user_function_type->name().c_str());
                     parser.recover_from_parsing_function ();
                   }
 #line 4945 "parse-tree/oct-parse.cc" /* yacc.c:1646  */
@@ -4949,6 +4950,7 @@ yyreduce:
     {
                     (yyval.tree_command_type) = parser.finish_function ((yyvsp[-2].tree_parameter_list_type), (yyvsp[0].octave_user_function_type), (yyvsp[-3].comment_type), (yyvsp[-4].tok_val)->line (),
                                                  (yyvsp[-4].tok_val)->column ());
+		    printf("------------PARSER: %s\n", yyvsp[0].octave_user_function_type->name().c_str());
                     parser.recover_from_parsing_function ();
                   }
 #line 4955 "parse-tree/oct-parse.cc" /* yacc.c:1646  */
