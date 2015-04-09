@@ -19,6 +19,10 @@ make install
 #testing oct_demo
 /usr/local/bin/octave oct_demo ("easy as", 1, 2, 3)
 
+
+#http://ftp.gnu.org/gnu/automake/automake-1.14.1.tar.xz
+in automake-1.14.1: ./configure; make; make install
+
 parse.y //rna
 cp     .h .cc
 cp-air .h .cc
