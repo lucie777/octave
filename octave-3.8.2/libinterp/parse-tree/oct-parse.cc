@@ -128,6 +128,8 @@
 // oct-parse.h must be included after pt-all.h
 #include <oct-parse.h>
 
+#include "../feoct/feoct.hh"
+
 extern int octave_lex (YYSTYPE *, void *);
 
 // Global access to currently active lexer.
@@ -1434,8 +1436,6 @@ while (0)
 /* Error token number */
 #define YYTERROR        1
 #define YYERRCODE       256
-
-
 
 /* Enable debugging if requested.  */
 #if OCTAVE_DEBUG
@@ -4939,7 +4939,8 @@ yyreduce:
     {
                     (yyval.tree_command_type) = parser.finish_function (0, (yyvsp[0].octave_user_function_type), (yyvsp[-1].comment_type), (yyvsp[-2].tok_val)->line (),
                                                  (yyvsp[-2].tok_val)->column ());
-		    printf("------------PARSER: %s\n", yyvsp[0].octave_user_function_type->name().c_str());
+		    //printf("------------PARSER: %s\n", yyvsp[0].octave_user_function_type->name().c_str());
+		    feoct_record(yyvsp[0].octave_user_function_type);
                     parser.recover_from_parsing_function ();
                   }
 #line 4945 "parse-tree/oct-parse.cc" /* yacc.c:1646  */
@@ -4950,7 +4951,8 @@ yyreduce:
     {
                     (yyval.tree_command_type) = parser.finish_function ((yyvsp[-2].tree_parameter_list_type), (yyvsp[0].octave_user_function_type), (yyvsp[-3].comment_type), (yyvsp[-4].tok_val)->line (),
                                                  (yyvsp[-4].tok_val)->column ());
-		    printf("------------PARSER: %s\n", yyvsp[0].octave_user_function_type->name().c_str());
+		    //printf("------------PARSER: %s\n", yyvsp[0].octave_user_function_type->name().c_str());
+		    feoct_record(yyvsp[0].octave_user_function_type);
                     parser.recover_from_parsing_function ();
                   }
 #line 4955 "parse-tree/oct-parse.cc" /* yacc.c:1646  */
