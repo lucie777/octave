@@ -182,7 +182,7 @@ tree_monit::print_comment_list (octave_comment_list& item)
   while (p != item.end ()){
     indent += 2;
     octave_comment_elt elt = *p++;
-    print_comment_elt (elt);
+    print_comment (elt);
     indent -= 2;
   }
 }
