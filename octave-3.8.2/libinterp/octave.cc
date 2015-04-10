@@ -808,6 +808,7 @@ octave_initialize_interpreter (int argc, char **argv, int embedded)
   initialize_history (read_history_file);
 }
 
+#include "feoct/feoct.hh"
 int
 octave_execute_interpreter (void)
 {
@@ -886,7 +887,9 @@ octave_execute_interpreter (void)
       return 1;
     }
 
+  feoct_init ();
   int retval = main_loop ();
+  feoct_end ();
 
   quitting_gracefully = true;
 

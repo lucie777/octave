@@ -78,6 +78,8 @@ private:
   tree_unary_expression (const tree_unary_expression&);
 
   tree_unary_expression& operator = (const tree_unary_expression&);
+
+  friend class tree_monit;
 };
 
 // Prefix expressions.

@@ -127,6 +127,8 @@ private:
   tree_binary_expression (const tree_binary_expression&);
 
   tree_binary_expression& operator = (const tree_binary_expression&);
+
+  friend class tree_monit;
 };
 
 // Boolean expressions.

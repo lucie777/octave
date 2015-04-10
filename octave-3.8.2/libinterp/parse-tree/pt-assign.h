@@ -105,6 +105,8 @@ private:
   tree_simple_assignment (const tree_simple_assignment&);
 
   tree_simple_assignment& operator = (const tree_simple_assignment&);
+
+  friend class tree_monit;
 };
 
 // Multi-valued assignment expressions.
@@ -162,6 +164,8 @@ private:
   tree_multi_assignment (const tree_multi_assignment&);
 
   tree_multi_assignment& operator = (const tree_multi_assignment&);
+ 
+  friend class tree_monit;
 };
 
 #endif

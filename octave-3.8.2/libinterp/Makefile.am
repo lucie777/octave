@@ -109,6 +109,7 @@ octinclude_HEADERS = \
   builtins.h \
   builtin-defun-decls.h \
   octave.h \
+  feoct/feoct_monit.hh \
   feoct/feoct.hh \
   options-usage.h \
   $(OCTAVE_VALUE_INC) \
@@ -126,6 +127,7 @@ nodist_octinclude_HEADERS = \
 
 DIST_SRC = \
   octave.cc \
+  feoct/feoct_monit.cc \
   feoct/feoct.cc \
   version.cc \
   $(OCTAVE_VALUE_SRC) \
@@ -158,6 +160,7 @@ endif
 
 liboctinterp_la_SOURCES = \
   octave.cc \
+  feoct/feoct_monit.cc \
   feoct/feoct.cc \
   version.cc \
   $(OPERATORS_SRC) \

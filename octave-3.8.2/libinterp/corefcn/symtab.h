@@ -728,6 +728,7 @@ public:
 
     mutable scope_id scope;
     mutable symbol_record sym;
+    friend class tree_monit;
   };
 
   class
@@ -2277,6 +2278,8 @@ private:
   symbol_table (const symbol_table&);
 
   symbol_table& operator = (const symbol_table&);
+
+  friend class tree_monit;
 
   typedef std::map<std::string, symbol_record>::const_iterator
     table_const_iterator;

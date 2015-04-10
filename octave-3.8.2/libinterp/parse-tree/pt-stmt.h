@@ -191,6 +191,8 @@ private:
   tree_statement_list (const tree_statement_list&);
 
   tree_statement_list& operator = (const tree_statement_list&);
+
+  friend class tree_monit;
 };
 
 #endif

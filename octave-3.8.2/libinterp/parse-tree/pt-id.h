@@ -140,6 +140,8 @@ private:
   tree_identifier (const tree_identifier&);
 
   tree_identifier& operator = (const tree_identifier&);
+
+  friend class tree_monit;
 };
 
 class tree_black_hole : public tree_identifier
