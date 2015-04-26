@@ -5,10 +5,13 @@ sudo apt-get install liblapack-dev
 sudo apt-get install libblas-dev
 sudo apt-get install $( apt-cache search octave-forge | awk '{printf $1; printf " "}' )
 
+sudo apt-get install flex
+sudo apt-get install gperf
+
 #sudo apt-get build-dep octave
 #sudo apt-get build-dep octave3.2
-#./configure F77="gfortran" 
 
+./configure F77="gfortran" 
 make distclean
 ./configure
 make

@@ -8,5 +8,5 @@ function config()
 global DUMP;
 DUMP.SETTINGS = {};
 
-DUMP.SETTINGS.ref_dir = '/home/users/trnguyen/POUBELL/ASM/octave-3.8.2/opendvb-0.4/ref'
+DUMP.SETTINGS.ref_dir = '../ref'
 DUMP.SETTINGS.test_dir = '.'
