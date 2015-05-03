@@ -1,0 +1,252 @@
+module Octave-Concrete-Syntax
+hiddens
+  context-free start-symbols
+    Exp Exp
+exports
+
+  context-free syntax 
+    "(" Exp ")"                -> Exp {bracket}
+
+  context-free syntax
+    Exp BinOp Exp -> Exp {cons("BinOp")}
+
+  lexical syntax
+    "+"	  -> BinOp
+    "*"   -> BinOp
+    "-"   -> BinOp
+    "/"   -> BinOp
+    "^"   -> BinOp
+    "\\"  -> BinOp
+    ".*"  -> BinOp
+    "./"  -> BinOp
+    ".\\" -> BinOp
+    ".^"  -> BinOp
+    ".+"  -> BinOp
+    ".-"  -> BinOp
+
+    "<<"  -> BinOp
+    ">>"  -> BinOp
+
+    "&"   -> BinOp
+    "&&"  -> BinOp
+    "|"   -> BinOp
+    "||"  -> BinOp
+
+    "=="  -> BinOp
+    "!="  -> BinOp
+    "<"   -> BinOp
+    ">"   -> BinOp
+    "<="  -> BinOp
+    ">="  -> BinOp
+
+    "="    -> AssignOperator
+    "+="   -> AssignOperator
+    "*="   -> AssignOperator
+    "-="   -> AssignOperator
+    "/="   -> AssignOperator
+    "^="   -> AssignOperator
+    "\\="  -> AssignOperator
+    ".*="  -> AssignOperator
+    "./="  -> AssignOperator
+    ".\\=" -> AssignOperator
+    ".^="  -> AssignOperator
+    ".+="  -> AssignOperator
+    ".-="  -> AssignOperator
+
+    "<<="  -> AssignOperator
+    ">>="  -> AssignOperator
+
+    "&="   -> AssignOperator
+    "&&="  -> AssignOperator
+    "|="   -> AssignOperator
+    "||="  -> AssignOperator
+
+  context-free syntax
+    PrefixOp Exp -> Exp {cons("PrefixExp")}
+
+  lexical syntax
+    "!"   -> PrefixOp
+    "-"   -> PrefixOp
+    "++"  -> PrefixOp
+    "--"  -> PrefixOp
+
+  context-free syntax
+    Exp PostfixOp -> Exp {cons("PostfixExp")}
+
+  lexical syntax
+    ".'"  -> PostfixOp
+    "'"   -> PostfixOp
+    "++"  -> PostfixOp
+    "--"  -> PostfixOp
+
+
+  context-free syntax  %% order from pt-walk
+
+    "(" Exp ":" Exp ":" Exp ")"       -> Exp {cons("Range")}
+
+    Id		                      -> Var {cons("Var")}
+    Var                               -> LValue 
+    LValue                            -> Exp
+
+    LValue "." Id 		-> LValue {cons("FieldVar")}
+    LValue "[" {Exp ","}+ "]" 	-> LValue {cons("Subscript")}
+    LValue "{" {Exp ","}+ "}"   -> LValue {cons("CellIndex")}
+
+    "[" {Exp ","}+ "]"		-> Row {bracket}
+    "[" {Row ";"}+ "]"		-> Exp {cons("Matrix")}
+    "{" {Row ";"}+ "}"		-> Exp {cons("Cell")}
+
+    "nil" 			-> Exp {cons("NilExp")}
+
+    IntConst 			-> Exp {cons("Int")}
+    RealConst 			-> Exp {cons("Float")}
+    StrConst 			-> Exp {cons("String")}
+
+    "(:)"                       -> Exp {cons("Colon")}
+    "true"                      -> Exp {cons("True")}
+    "false"                     -> Exp {cons("False")}
+    "@" Id                      -> Exp {cons("FcnHandle")}
+     "(" {Exp ","}+ ")" "@" Exp -> Exp {cons("AnonFcnHandle")}  
+
+    Var "(" {Exp ","}* ")" 	-> Exp {cons("Call")}
+
+
+  lexical syntax
+    [a-zA-Z][a-zA-Z0-9\_]* -> Id
+  lexical restrictions
+    Id -/- [a-zA-Z0-9\_]
+
+  lexical syntax
+    "nil"   -> Id {reject}
+    "true"  -> Id {reject}
+    "false" -> Id {reject}
+
+  lexical syntax
+    [0-9]+ 			-> IntConst
+    "\"" StrChar* "\"" 		-> StrConst
+    ~[\\\"\n] 			-> StrChar
+    [\\] [n] 			-> StrChar
+    [\\] [t] 			-> StrChar
+    [\\] [\^] [A-Z]		-> StrChar
+    [\\] [0-9][0-9][0-9]	-> StrChar
+    [\\] [\"] 			-> StrChar
+    [\\] [\\] 			-> StrChar
+    [\\] [\"] 			-> StrChar
+    [\\] [\ \t\n]+ [\\] 	-> StrChar
+
+    IntConst "." IntConst	-> RealConst {cons("RealConstNoExp")}
+    IntConst "." IntConst 
+      "e" Sign IntConst         -> RealConst {cons("RealConst")}
+
+    "+" 			-> Sign
+    "-" 			-> Sign
+
+
+     Exp "i"			-> Exp {cons("Imaginary")}
+
+
+  context-free syntax
+    "break" 			      -> Exp {cons("Break")}
+    "continue"                        -> Exp {cons("Continue")}
+    "return"                          -> Exp {cons("Return")}
+
+    "{" {Exp ";"}* "}"               -> Exp {cons("Stats")}
+    DeclSort {Init ","}+              -> Exp {cons("Decl")}
+    Var "=" Exp                       -> Init {cons("Init")}
+    Var                               -> Init 
+    "for" Exp "=" Exp "do" Exp "end" -> Exp {cons("For")}
+    "for" "[" {Exp ","}+ "]" "=" Exp "do" Exp "end" -> Exp {cons("ComplexFor")}
+
+    "function" "[" {Exp ","}+ "]" "=" Id "(" {Exp ","}* ")" 
+          Exp	"end"                 -> Exp {cons("Function")}
+    "function" Exp "=" Id "(" {Exp ","}* ")" 
+          Exp	"end"                 -> Exp {cons("Function")}
+
+    "if" Exp "then" Exp "else" Exp "end" -> Exp {cons("If")}
+    "if" Exp "then" Exp "end" -> Exp {cons("IfThen")}
+
+    "switch" Exp Case* "end" -> Exp {cons("Switch")}
+    "case" Exp Exp -> Case {cons("Case")}
+    "otherwise" Exp -> Case {cons("Default")}
+
+
+    "try" Exp "catch" Exp "end"     -> Stmt {cons("TryCatch")}
+
+    "unwind_protect" Exp "unwind_protect_cleanup" 
+       Exp "end"         -> Exp {cons("UnwindProtect")}
+
+    "while" Exp "do" Exp   "end"     -> Exp {cons("While")}
+    "do"    Exp "until" Exp "end"    -> Exp {cons("DoUntil")}
+
+  lexical syntax
+    "global"  -> DeclSort
+
+  context-free syntax
+    LValue AssignOperator Exp                -> Exp {cons("Assign")} 
+    "[" {LValue ","}+ "]" AssignOperator Exp -> Exp {cons("AssignMulti")}
+
+  context-free syntax
+    		"|[" Module    "]|"  	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    		"|[" Dec       "]|"  	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    		"|[" Exp       "]|"  	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    "Exp"	"|[" Exp       "]|"	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    "LValue"	"|[" LValue    "]|"	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    "IntConst"	"|[" IntConst  "]|" 	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+
+  lexical syntax
+    "/*" CommChar* "*/" -> LAYOUT
+    "//" ~[\n]* [\n]    -> LAYOUT
+    ~[\*] 		-> CommChar 
+    Asterisk 		-> CommChar
+    [\*]		-> Asterisk
+
+  lexical restrictions
+    Asterisk -/- [\/]
+
+  lexical syntax
+    [\ \t\n\13] -> LAYOUT
+
+  context-free restrictions
+    LAYOUT? -/- [\ \t\n]
+
+  variables
+    [s][0-9\']*    	-> StrConst 	{prefer}
+    [ijkn][0-9\']*   	-> IntConst 	{prefer}
+    [r][0-9\']*   	-> RealConst 	{prefer}
+    [xyzfgh][0-9\']* 	-> Id 		{prefer}
+    [e][0-9]*    	-> Exp 		{prefer}
+    "es"[0-9\']*"*"     -> {Exp ";"}+  	{prefer}
+    "a"[0-9\']* "*"	-> {Exp ","}+  	{prefer}
+    "ps"[0-9\']* 	-> {Exp ","}+  	{prefer}
+
+    "lv"[0-9\']*	-> LValue       {prefer}
+   "lvs"[0-9\']* "*"	-> {LValue ","}+{prefer}
+    "bo"[0-9\']*	-> BinOp	{prefer}
+    "uo"[0-9\']*        -> PrefixOp     {prefer}
+    "uo"[0-9\']*        -> PostfixOp       {prefer}
+    "ro"[0-9\']*	-> BinOp	{prefer}
+
+  lexical syntax
+    [s][0-9\']*    	-> Id {reject}
+    [ijkn][0-9\']*   	-> Id {reject}
+    [r][0-9\']*   	-> Id {reject}
+    [e][0-9]*    	-> Id {reject}
+    "es"[0-9\']*"*"	-> Id {reject}
+    "a"[0-9\']*	"*"	-> Id {reject}
+    "lv"[0-9\']*	-> Id {reject}
+    "lvs"[0-9\']* "*"	-> Id {reject}
+    "bo"[0-9\']*	-> Id {reject}
+    "ro"[0-9\']*	-> Id {reject}
+    "pre"[0-9\']*	-> Id	{reject}
+    "post"[0-9\']*      -> Id     {reject}
+
+
+  context-free priorities
+     LValue AssignOperator Exp			  -> Exp {cons("Assign")}
+  > {right:
+     "if" Exp "then" Exp "else" Exp "end" -> Exp {cons("If")}
+     "while" Exp "do" Exp  "end"    	  -> Exp {cons("While")}
+     "for" Exp "="  Exp "do" Exp "end"    -> Exp {cons("For")}
+    }
+
+

@@ -1,0 +1,22 @@
+module octave/program/frontend/octave-frontend
+imports 
+  liblib 
+  liboctavec
+  stratego-xt-xtc-tools
+
+strategies
+
+
+ io-octave-frontend = 
+   xtc-io-wrap(of-options, octave-front-end)
+
+  of-options =
+    Option("--no-check",
+      where(<set-config>("--no-check",<id>)),
+      !"--no-check           Do not use OAS format checker")
+    + Option("--script",
+      where(<set-config>("--script",())),
+      !"--script         Input is a script")
+
+
+

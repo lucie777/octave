@@ -1,0 +1,53 @@
+module Insn-Operators
+exports
+context-free syntax 
+
+  %%  Arithmetic
+    "+"   -> IOp {cons("ADD")}
+    "-"   -> IOp {cons("SUB")} 
+    "*s"  -> IOp {cons("MULS")}
+    "*"   -> IOp {cons("MULU")}
+    "mac" -> IOp {cons("MAC")}
+    "/s"  -> IOp {cons("DIVS")} 
+    "/u"  -> IOp {cons("DIVU")}
+    "-|"  -> IOp {cons("NEG")}   
+
+  %% LOGIC
+    "&"   -> IComp {cons("AND")}
+    "|"   -> IComp {cons("OR")}
+    "xor" -> IComp {cons("XOR")} 
+    "not" -> IComp {cons("NOT")}
+    "always"  -> IComp {cons("A")}
+    "never"  -> IComp {cons("N")}
+
+  %% SHIFTING l for logic and c for carry
+    "<a" -> IComp {cons("ASL")}
+    ">a" -> IComp {cons("ASR")}
+    "<l" -> IComp {cons("LSL")}
+    ">l" -> IComp {cons("LSR")}
+    "<r" -> IComp {cons("ROL")} 
+    ">r" -> IComp {cons("ROR")} 
+    "<c" -> IComp {cons("RCL")} 
+    ">c" -> IComp {cons("RCR")} 
+
+  %% Status Tests
+
+   "=i"  -> IComp {cons("EQ")} 
+   "~=i" -> IComp {cons("NE")}
+   "min"  -> IComp{cons("MI")}   %% Minus ?? 
+   "plus" -> IComp{cons("PL")} 
+   "ows"  -> IComp {cons("VS")}   %%  Overflow Set
+   "owc"  -> IComp {cons("EQ")}   %%  Overflow Clear
+
+
+   %%Unsigned Comparisions
+   "lo"   -> IComp {cons("LO")} 
+   "los"  -> IComp {cons("LS")}   %% Lower or Same
+   "hs"   -> IComp {cons("HS")}
+   "hi"   -> IComp {cons("HI")} 
+
+   %% Signed Comparisions
+   "<s"  -> IComp {cons("LT")}
+   "<=s" -> IComp {cons("LE")}
+   ">=s" -> IComp {cons("GE")}
+   ">s"  -> IComp {cons("GT")}

@@ -1,0 +1,158 @@
+/**
+ * Octave partial evaluator.
+ */
+module octave/program/optimize/partial-evaluation
+imports 
+  octave/program/optimize/superopt
+  stratego-xt-xtc-tools 
+  liblib 
+
+overlays
+  info-level = Debug()
+
+strategies
+    
+  io-partial-evaluation = 
+    octave-io-wrap(dynrule-options, {| return-names : Octave-PE |})
+
+  Octave-PE =
+    Prog(map(generate-specialization-rule( |["PropConst","CopyProp","CSE"] )),id)
+  ; Prog(id,partial-eval)
+  ; Prog(<concat>[<id>,<bagof-specialized-functions;reverse;uniq >],id)
+
+
+  partial-eval = 
+    forward-prop( 
+        pe-multi-assign(partial-eval) <+ pe-calls(partial-eval) <+ prop-const-transform(partial-eval)
+      , super-opt-before(partial-eval) 
+      , partial-eval
+      , super-opt-after 
+      | ["PropConst","CopyProp","CSE"], [], []
+    )
+
+  pe-calls(pe) =
+      |[ f(<*pe>)]| 
+    ; if <not(is-being-specialized)>f then 
+          specialize-call(specialize-function-by-value,specialization-facts-by-value | <get-nargout>) 
+      end 
+        
+
+ /* Unfold function of multi-assignement functions */  
+   pe-multi-assign(pe) =
+    ?|[ [lvs*] = f(a*) ]|
+    ; where(<pe> a* => a1*; <length>lvs* => n_out; <gt>(n_out,1); <length>a1* => n_in)
+    ; !|[ f(a1*) ]|
+    ; if <not(is-being-specialized)>f then 
+          specialize-call(specialize-function-by-value,specialization-facts-by-value | n_out) 
+      end 
+    ; ?|[ g(a2*) ]|
+    ; <return-names>(f,n_out, n_in) => (rs,ns)
+    ; <get-function> (f, n_out, n_in )
+    ; ?Function(result,f1,args,body)
+    ; <multi-stats(pe)>(lvs*,ns,body)
+
+
+ /* Flattens a multi-assignment into a unfolded call */
+  multi-stats(pe) = 
+   ?(lvs, ns, body)
+   ; <build-asgs> (lvs, ns) => asgs
+   ; !Stats([body|asgs])
+   ; pe
+
+
+  build-asgs =
+    zip({x,e: ?(Var(x),e); !|[x = e]|; !Silent(<id>)})
+
+  is-being-specialized = 
+    ?f ; bigbagof-specializing ; fail //=> [_|_]
+
+  specialize-function-by-value(|n_args, facts, nargout,argin,scopes) :
+    fcn@Function(result,f,args,body) -> Function(result,g,new_args,new_body)
+      where 
+        dr-ignore-rules-state(
+           where(get-var-names; map({x:?x; new-dynamic-rules(|scopes, x, x) })) 
+         ; alter-name-by-value(|f,facts) => g 
+         ; rules( specializing :+ f -> g ) 
+         ; <diff>(n_args,<map(Fst)>facts) => new_args
+         ; <int-to-string>argin => i 
+         ; <generate-prop-const-rules>facts => a*
+         ; rules(PropConst: |[ nargin() ]| -> |[ i ]|)
+         ; <partial-eval>body => new_body
+         | ["specializing"|scopes] ) 
+
+  generate-prop-const-rules = 
+    map(\ (|[ x ]|,e) -> |[ x = e ]| \ ; prop-const-assign)
+
+  specialization-facts-by-value(|args) =
+    where(?a*; length =>n; <take(!n)> args =>a1*)
+  ; <zip>(a1*,<id>)
+  ; !(<filter((id,not(is-value));Snd)>,<filter((id,is-value))>)
+  ; !(a1*, <id>)
+    
+  alter-name-by-value(|f,facts) =
+    <concat-strings>[f,"__",<new>]
+
+  generate-specialization-rule( | scopes) =
+    ?fcn@Function(result,f,args,body)
+  ; where( not( <get-config> "--avoid" ; fetch-elem(?f) ) ) 
+  ; rules (
+      specialize-call(specialize-function: a * a * a * a * a * a -> a,specialization-facts: a * a -> a | nargout) :
+        |[ f(a*) ]| -> e
+          where 
+            log(|info-level(),"Trying to specialize function for call S1: ",|[ f(a*) ]|)
+          ; <specialization-facts(|args)>a* => (new_args,(a1*,facts))
+	  ; log(|info-level(),"Parameters of new specialized function S2 ",a1*) 
+	  ; log(|info-level(),"Facts used for new specialized function S3 ",facts)
+	  ; <length <+ !0> a* =>nargin
+          ; ( (<specialized-function>(f,nargout,nargin,facts)=> spec_fcn@Function(new_result,g,_,e1)
+              ; log(|info-level(),["Found previously specialized function of  S4 ",f," (for given facts)"], facts))
+
+              <+ (<specialize-function(|new_args, facts, nargout, nargin, scopes)>fcn => spec_fcn@Function(new_result,g,_,e1)
+                ; log(|info-level(),[" New specialized function S5 ",f], g) 
+                ; rules( 
+                          specialized-function  :+ (f,nargout,nargin, facts) -> spec_fcn 
+	                  get-function :+ (f, nargout,nargin) -> spec_fcn
+                          return-names  :+ (f,nargout,nargin) -> (args, new_result)
+			  specialized-functions :+ _ -> spec_fcn
+                       ) 
+               )
+            )
+          ; if inlineable then 
+              rename-vars => Function(res,g,_,<id>)
+            else /* specialize */
+              !|[ g(a1*) ]|
+            end => e
+         <+ ti-error( | <concat-strings> ["Specialization failed for function ",f,"."] )
+    ) 
+
+
+  inlineable = 
+  // no eval/feval etc.
+    Function([],id,[],id)
+  ; not(
+      oncetd(
+        Global(id)
+      + GlobalInit(id,id)
+      + Static(id)
+      + StaticInit(id,id)
+      + Call(Var("eval"+"feval"),id)
+      + Return()
+      )
+    )
+
+  rename-vars = 
+  {| RenameVar :
+     let skip-me(s) = Call(id,s) // <+ Function(id,id,s,s)
+         ret-vars  = ?Function(<id>,_,_,_)
+         vars = 
+            //where(ret-vars => rs)
+          collect(Var(id)) => vs 
+         ; map(try({ ?Var(v); not(is-special-var) ; new => v1 ; rules( RenameVar : Var(v) -> Var(v1) ) })) 
+     in 
+       where(vars)
+     ; topdownS(try(RenameVar),skip-me)
+     end
+  |}
+
+ is-special-var =
+   ?Var("nargin") <+ ?Var("nargout") <+ ?Var("ans") <+ ?Var("e")

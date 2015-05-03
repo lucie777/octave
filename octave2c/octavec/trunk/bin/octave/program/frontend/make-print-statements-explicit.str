@@ -1,0 +1,38 @@
+module octave/program/front/make-print-statements-explicit
+imports 
+  liblib 
+  liboctavec
+
+signature
+  constructors
+    // temp.
+    Print : Term * Term -> Term
+
+strategies 
+
+  io-make-print-statements-explicit = 
+    io-wrap(make-print-statements-explicit)
+
+  make-print-statements-explicit =
+    alltd(remove-silent)    
+
+
+  remove-silent =
+    \ Silent(stmt) -> stmt \
+  + \ Assign(lv,"=",e) -> Stats([Assign(lv,"=",e),Print(<get-display-name>lv,<get-var>lv)]) \
+  + \ AssignMulti(lv,"=",e) -> Stats([AssignMulti(lv,"=",e)|<map(!Print(<get-display-name>,<id>))>lv]) \
+
+
+  get-display-name =
+  ( ?Subscript(<id>,_)
+  + ?CellIndex(<id>,_)
+  + ?FieldVar(<id>,_)
+  + id )
+  ; oncetd(is-string ; ?x) ; !x
+ 
+  get-var = 
+  ( ?Subscript(<id>,_)
+  + ?CellIndex(<id>,_)
+  + ?FieldVar(<id>,_)
+  + id )
+  

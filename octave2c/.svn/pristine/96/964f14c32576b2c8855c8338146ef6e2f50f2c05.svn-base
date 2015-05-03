@@ -1,0 +1,27 @@
+module OctaveTC-Congruences
+exports
+  context-free syntax
+
+    		"|[" OctaveModule	"]|"  	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    		"|[" OctaveDec	"]|"  	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    		"|[" OctaveExp	"]|"  	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    "Exp"	"|[" OctaveExp	"]|"	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    "LValue"	"|[" OctaveLValue	"]|"	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+    "IntConst"	"|[" OctaveIntConst	"]|" 	-> StrategoStrategy     {cons("ToStrategy"),prefer}				        
+    "|[" TypeShape  "]|" 	-> StrategoStrategy     {cons("ToStrategy"),prefer}
+
+  context-free syntax
+
+    "<"  StrategoStrategy ">" -> OctaveExp            {cons("FromApp"),prefer}
+    "<"  StrategoStrategy ">" -> OctaveLValue         {cons("FromApp"),prefer}
+    "<"  StrategoStrategy ">" -> OctaveDec            {cons("FromApp")}
+    "<*" StrategoStrategy ">" -> {OctaveExp ","}+     {cons("FromApp")}
+    "<*" StrategoStrategy ">" -> {OctaveExp ";"}+     {cons("FromApp")} 
+
+%%    "<"  StrategoStrategy ">" -> TypeShape    {cons("FromApp"),prefer}
+
+    "<id:"   StrategoStrategy ">" -> OctaveId             {cons("FromApp")}
+    "<multi:" StrategoStrategy ">" -> {OctaveLValue ","}+ {cons("FromApp"),prefer}
+    "<int:"  StrategoStrategy ">" -> OctaveIntConst	    {cons("FromApp")}
+    "<real:" StrategoStrategy ">" -> OctaveRealConst      {cons("FromApp")}
+    "<str:"  StrategoStrategy ">" -> OctaveStrConst       {cons("FromApp")}

@@ -1,0 +1,50 @@
+module octave/program/optimize/forward-substitution
+imports 
+  liblib 
+  octave/program/optimize/copy-propagation
+  octave/lang/forward-propagation
+  dynamic-rules-utils
+
+  overlays
+  info-level = Info()
+  
+strategies
+
+  io-forward-substitution = 
+    io-wrap(fprop)
+
+  fprop = 
+    forward-prop(fail, id, fprop, fprop-after  | ["ForwardProp"], [], []) 
+
+  dr-new(|s,d) = ?"ForwardProp" ; new-ForwardProp(|s,d)
+  dr-undefine(|dep) = ?"ForwardProp" ; undefine-ForwardProp(|dep)
+  
+  fprop-after = 
+    fprop-assign <+ {o,t :?o; ForwardProp ; debug(!"After frop \n"); ?t; propagation-notice(|o,t)}
+    
+  fprop-assign = 
+    ?asg@|[ x = e ]|
+    ; where( <pure-and-not-trivial(|x)> |[ e ]|
+             ; <get-var-dependencies>  asg => xs
+	     ; <innermost-scope-ForwardProp> asg => z 
+	     ; rules( ForwardProp.z : |[ x ]| -> |[ e ]| depends on xs )
+      )
+
+  innermost-scope-ForwardProp =
+    get-var-names => vars
+    ; innermost-scope-ForwardProp(elem-of(|vars))
+
+  fprop-function-effects =
+    map({?x; undefine-dynamic-rules(|["ForwardProp"], x)} )
+
+  pure-and-not-trivial(|x) =
+    not(?|[ i ]| + ?|[ y ]|)    // not trivial
+  ; pure                      // no side effects
+  ; not(oncetd(?|[ x ]|))     // does not contain lvalue
+
+  pure =
+    ?|[ i ]| 
+  + ?|[ x ]| 
+  + BinOp(pure,id,pure)
+
+  propagation-notice(|s,t)    = log(|info-level,["Forward propagated  '",s,"' for '",t,"'"])   

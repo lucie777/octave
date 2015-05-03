@@ -1,0 +1,80 @@
+module Stratego-Octave-C
+imports Octave-Concrete-SyntaxRenamed Stratego-C type-specification OctaveTC-Variables 
+OctaveTC-Congruences
+hiddens
+  context-free start-symbols StrategoModule
+
+  context-free syntax
+
+    "~id:"    StrategoTerm -> CId         {cons("FromTerm")}
+    "~int:"   StrategoTerm -> IntLiteral  {cons("FromTerm")}
+    "~real:"  StrategoTerm -> FloatLiteral {cons("FromTerm")}
+    "~str:"   StrategoTerm -> StringLiteral {cons("FromTerm")}   
+    "~arr:"   StrategoTerm -> Initializer {cons("FromTerm")}  
+
+  variables 
+%%%    [xyzfglc][0-9\']*       -> OctaveId      {prefer}
+%%%    [xyzfgl][0-9\']*  "*"   -> {OctaveId ","}* {prefer}
+%%%
+
+    [xyzfglc][0-9\']*       -> ID      {prefer}
+    "stm" [0-9\']* -> Stm {prefer}
+    "stm" [0-9\']*  "*" -> Stm* {prefer}
+  
+
+    
+    [ijk][0-9\']*	    -> IntLiteral{prefer}
+    "ft" [0-9\']*	    -> FloatLiteral {prefer}
+    "str"[0-9\']*           -> StringLiteral {prefer}
+
+    "e" [0-9]*  -> PrimaryExp {prefer}
+    "e" [0-9]*  -> CommaExp
+
+  context-free syntax
+
+%%    "~ext-def*:"   StrategoTerm -> ExternalDef* {cons("FromTerm")}
+    "~ext-def+:"   StrategoTerm -> ExternalDef+ {cons("FromTerm")}
+    "~dec+:"       StrategoTerm -> Declaration+ {cons("FromTerm")}
+
+   context-free syntax
+
+    		"|[" OctaveModule    "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    		"|[" OctaveDec       "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    		"|[" OctaveExp       "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "Exp"	"|[" OctaveExp       "]|"	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "LValue"	"|[" OctaveLValue    "]|"	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "IntConst"	"|[" OctaveIntConst  "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+		"|[" TypeShape "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+%%%		"|[" Type "]|"		-> StrategoTerm	{cons("ToTerm"),prefer}
+    "tp"  	"|[" TypeShape "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+
+
+              "|[" OctaveBinOp "]|" -> StrategoTerm {cons("ToTerm")} 
+           "|[" OctaveAssignOperator "]|" -> StrategoTerm {cons("ToTerm")}
+          "|[" OctavePostfixOp "]|" -> StrategoTerm {cons("ToTerm")}
+    "pre"  "|[" OctavePrefixOp "]|" -> StrategoTerm {cons("ToTerm")}
+   "post" "|[" OctavePostfixOp "]|" -> StrategoTerm {cons("ToTerm")}
+
+
+  context-free syntax
+
+
+    "~"  StrategoTerm -> OctaveExp            {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> OctaveLValue         {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> TypeShape	{cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> OctaveDec            {cons("FromTerm")}
+    "~*" StrategoTerm -> {OctaveExp ","}+     {cons("FromTerm")}
+    "~*" StrategoTerm -> {OctaveExp ";"}+     {cons("FromTerm")}
+
+    "~id:"   StrategoTerm -> OctaveId          {cons("FromTerm")}
+    "~int:"  StrategoTerm -> OctaveIntConst    {cons("FromTerm")}
+    "~real:" StrategoTerm -> OctaveRealConst   {cons("FromTerm")}
+    "~str:"  StrategoTerm -> OctaveStrConst    {cons("FromTerm")}
+
+    "~ty:"   StrategoTerm -> TypeShape   {cons("FromTerm")}
+  
+    Type      -> Id {reject}
+    TypeShape -> Id {reject}
+    TypeShape -> Exp {reject}
+
+  

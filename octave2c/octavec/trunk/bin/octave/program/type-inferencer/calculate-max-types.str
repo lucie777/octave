@@ -1,0 +1,46 @@
+module octave/program/type-inferencer/calculate-max-types
+imports 
+  liblib
+  liboctavec
+strategies 
+  io-calculate-max-types = 
+    io-wrap(Octave-MaxTypes)
+
+  Octave-MaxTypes =
+    alltd({| var-max-type: gather-constants |})
+
+  gather-constants = 
+    ?fn@|[ function e0 = f(a0*) e1 end ]|
+  ; <gather-vars>e1
+  ; group-vars
+  ; filter(calculate-max-type ; generate-max-type-rule )
+  ; <map(generate-max-type-rule)>e0
+  ; <topdown(try(Var(id);rm-annotations;var-max-type))>fn
+
+  gather-vars =
+    collect(?Var(_) + ?Global(<!Var(<id>)>) + ?GlobalInit(<!Var(<id>)>,_) + ?Static(<!Var(<id>)>), ?StaticInit(<!Var(<id>)>,_) )
+
+  group-vars =
+    ?vs
+  ; map(rm-annotations) ; make-set
+  ; map({v: ?v ; !(v,<filter(where(rm-annotations;?v);get-octave-type)>vs) })
+
+  calculate-max-type =
+    \ (v,ts) -> v{t} where <max-type>ts => UNIVERSAL() => t  \
+
+  generate-max-type-rule =
+    ?v{max} ; rm-annotations => v1 ; rules( var-max-type : v1 -> v ) 
+
+  max-type =
+    flatten-list
+  ; remove-shapes
+  ; not([]) 
+  ; foldr([]
+    , ?(<id>,[]) 
+    + \ (x,x) -> x \ 
+    + \ (x,y) -> UNIVERSAL() where not(<eq>(x,y)) \ 
+    )
+
+  remove-shapes =
+    map(try( \ MATRIX(t,_) -> MATRIX(t,[]) \ + \ MATRIX(t) -> MATRIX(t,[]) \ ))
+

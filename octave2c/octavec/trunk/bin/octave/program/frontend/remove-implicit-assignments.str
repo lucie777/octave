@@ -1,0 +1,61 @@
+module octave/program/front/remove-implicit-assignments
+imports 
+  liblib
+  liboctavec
+strategies
+
+  io-remove-implicit-assignments =
+    io-wrap(remove-implicit-assignments)
+
+  remove-implicit-assignments =
+    where(generate-internal-fcn-rule)
+  ; Prog(map(generate-fcn-rule),id)
+  ; topdownS(id,skip-it)
+
+  skip-it(s) =
+    Prog(s,id)
+  + For(id,id,s)
+  + ComplexFor(id,id,s)
+  + If(id,s,s)
+  + While(id,s)
+  + Assign(id,id,id)
+  + AssignMulti(id,id,id)
+  + global-initialization
+  + call-to-ans-assign 
+ <+ \ e -> |[ ans = e ]| where is-exp \
+
+  generate-fcn-rule =
+    try( Function([],?f,id,id) ; rules( call-to-ans-assign : |[ f(a*) ]| -> |[ f(a*) ]| ))
+
+  generate-internal-fcn-rule =
+    read-builtin-specs
+  ; alltd({f,a,t: ?FunctionSig(f,a,t); 
+                where(<(?[]  + ?[UNIVERSAL()])>t);
+                rules( call-to-ans-assign : |[ f(a*) ]| -> |[ f(a*) ]| )})
+
+  global-initialization :
+   GlobalInit(v,stmts) -> Stats([Global(v), Silent(Assign(Var(v),"=", stmts))])
+   
+  global-initialization : 
+    StaticInit(v,stmts) -> Stats([Static(v), Silent(Assign(Var(v),"=", stmts))]) 
+  
+
+  is-exp =
+    Int(id) 
+  + Float(id) 
+  + FcnHandle(id)
+  + AnonFcnHandle(id,id,id) 
+  + String(id) 
+  + Matrix(id)
+  + BinOp(id,id,id)
+  + PrefixExp(id,id)
+  + PostfixExp(id,id)
+  + Subscript(id,id)
+  + CellIndex(id,id)
+  + FieldVar(id,id)
+  + Call(id,id)
+  + Range(id,id,id)
+  + True()
+  + False()
+  + Cell(id)
+  

@@ -1,0 +1,102 @@
+module type-specification
+       
+exports 
+
+  context-free start-symbols  ProgDeclaration 
+
+  sorts ProgDeclaration TypeShape OctaveTy
+
+  context-free syntax 
+
+   TypeShape -> OctaveTy{cons("ToTerm")}
+
+  "definitions" Constants* Variables* 
+   FunctionSignatures* MappingFuncs*  UserDecls* -> ProgDeclaration{cons("ProgDecls")}
+  
+  "constants" VarTyped* -> Constants{cons("Constants")} 
+
+ %% BUILTIN VARIABLES
+  "variables" VarTyped* -> Variables{cons("Variables")}
+
+  "functions" FunctionType+ -> FunctionSignatures{cons("LibFuncs")}
+  "mapping" "functions" FunctionType+  -> MappingFuncs{cons("MappingFuncs")}
+
+
+
+  Id "::" {TypeShape ","}* "->" {TypeShape ","}* -> FunctionType{cons("FunctionSig")}
+
+  "_"		-> Type {cons("ANY_TYPE")}
+  "bool"	-> Type {cons("BOOL")}   
+  "int" 	-> Type {cons("INT")}
+  "float" 	-> Type {cons("FLOAT")}
+  "complex"	-> Type {cons("COMPLEX")} 
+  "char"	-> Type {cons("CHAR")}
+  "fcnhandle"   -> Type {cons("FCNHANDLE")}
+  "scalar"	-> Type {cons("NUMERIC")}
+  "union" TypeShape* -> TypeShape {cons("UNION_TYPES")}
+
+  "streamoff"   -> Type {cons("STREAMOFF")}
+
+
+ 
+  IntConst		   -> Exp {cons("Int")}
+  Id			   -> Exp {cons("Var")}
+ 
+  Type				  -> TypeShape{cons("SCALAR")} 
+  "unit" 			  -> TypeShape{cons("UNIT")} 
+  "string"			  -> TypeShape{cons("STRING")}
+  "string" "(" Exp ")"           -> TypeShape{cons("STRING")}
+  "matrix" "(" Type ")"		  -> TypeShape{ast("MATRIX(<1>,[])")} 
+  "matrix" "(" Type "," {Exp ","}+ ")" -> TypeShape{cons("MATRIX")}
+  "matrix" "(" Type "," "_" ")" -> TypeShape{ast("MATRIX(<1>,FromTerm(Wld))")}
+  "range"             -> TypeShape{cons("RANGE")}
+  "range" "(" Exp ")" -> TypeShape{cons("RANGE")}
+  TypeShape "*"			  -> TypeShape{cons("MANY")}
+  TypeShape "+"			  -> TypeShape{cons("ONE_MANY")}
+
+  "fcnhandle"                     -> TypeShape{cons("FCNHANDLE")}
+
+
+  "cell"   "{" CellTyped* "}"	  -> TypeShape{cons("CELL")} 
+  "struct" "{" VarTyped* "}"	  -> TypeShape{cons("RECORD")}   
+
+  Id ":=" TypeShape		  -> VarTyped{cons("VarTyped")} 
+  IntConst+ ":=" TypeShape	  -> CellTyped{cons("CellTyped")} 
+
+
+
+  %% User declarations
+  "declarations" FunctionDeclaration+      -> UserDecls{cons("Decls")}
+
+  "function" Id "(" {Id ","}*  ")" ":" VarTyped+ -> FunctionDeclaration{cons("FunctionDeclaration")}
+
+  "universal" -> TypeShape {cons("UNIVERSAL"),prefer}
+  "octave_value" -> TypeShape {cons("UNIVERSAL")}
+  "range" "(" Type "," Exp ")" -> TypeShape {cons("RANGE")}
+
+  sorts IntConst
+  lexical syntax
+    [0-9]+	-> IntConst
+
+  lexical syntax
+    "/*" CommChar* "*/" -> LAYOUT
+    "//" ~[\n]* [\n]    -> LAYOUT
+    ~[\*] 		-> CommChar 
+    Asterisk 		-> CommChar
+    [\*]		-> Asterisk
+
+  lexical restrictions
+    Asterisk -/- [\/]
+
+  lexical syntax
+    [\ \t\n\13] -> LAYOUT
+
+  context-free restrictions
+    LAYOUT? -/- [\ \t\n]
+
+  lexical syntax
+    [a-zA-Z][a-zA-Z0-9\_]* -> Id
+  lexical restrictions
+    Id -/- [a-zA-Z0-9\_]
+
+

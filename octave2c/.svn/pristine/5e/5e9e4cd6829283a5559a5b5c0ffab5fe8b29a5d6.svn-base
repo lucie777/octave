@@ -1,0 +1,45 @@
+module octave/program/optimize/share-constants
+imports 
+  liblib 
+  liboctavec
+signature
+  constructors
+    // temp.
+    Complex : Term -> Term
+    CMinus : Term * Term -> Term
+
+strategies 
+
+  io-share-constants = 
+    io-wrap(share-constants)
+
+  share-constants =
+    Prog(id,!Stats([<id>]))
+  ; alltd({| constant-to-var: gather-constants |})
+
+  gather-constants :
+    |[ function e0 = f(a0*) e1 end ]| -> |[ function e0 = f (a0*) { {e2} ; e3 } end ]|
+      where 
+        get-constant-values => e2 
+      ; <topdown(try(constant-to-var))>e1 => e3
+
+  gather-constants :
+    es@Stats(_) -> Stats([Stats(e2),e3])
+      where 
+        get-constant-values => e2 
+      ; <topdown(try(constant-to-var))>es => e3
+
+
+  get-constant-values =
+    collect(Matrix(id)+String(id))
+  ; map({ c,v: ?c ; where(!Var(<new>) => v) ; !Assign(v,"=",c) ; rules(constant-to-var: c -> v ) })
+
+  generate-trans-rules = 
+    ?c
+  ; where(!Var(<new>) => v)
+  ; rules(constant-to-var : c -> v )
+  ; (nr-of-occurences <+ !0) 
+  ; inc => nr
+  ; rules(nr-of-occurences: c -> nr )
+  ; !Assign(v,"=",c)
+

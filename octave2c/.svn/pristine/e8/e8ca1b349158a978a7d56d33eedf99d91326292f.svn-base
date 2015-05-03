@@ -1,0 +1,34 @@
+module octave/program/optimize/get-builtin-funcs
+imports 
+  liblib
+  liboctavec
+  dynamic-rules-utils
+overlays
+  info-level = Debug() // Info()
+
+strategies
+  io-get-builtin-funcs = 
+    io-wrap(get-funcs)
+
+  
+ get-funcs =
+     ?prg
+   ; where(
+        get-user-funcs  => ufs
+      ; <get-calls> prg => cs
+      ; <diff>(cs, ufs) 
+      ; info-calls-notice(|cs)
+      ; info-funcs-notice(|<id>)
+      )
+
+
+ get-user-funcs =
+   collect({f: ?Function(_,f,_,_); !f})
+  
+ get-calls =
+   collect({f: ?Call(Var(f), _); !f})
+
+  info-funcs-notice(|f) = log(|info-level(),[" Builtin funcs ", f ])
+
+  info-calls-notice(|f) = log(|info-level(),["Function calls ", f ])
+ 

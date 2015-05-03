@@ -1,0 +1,48 @@
+module StrategoInsn
+imports StrategoRenamed INSN  
+exports 
+  context-free syntax
+    "|[" ILoc       "]I|"  -> StrategoTerm   {cons("ToTerm"),prefer}
+    "|[" IStmt      "]S|"  -> StrategoTerm   {cons("ToTerm"),prefer}
+    "|[" IType      "]I|"  -> StrategoTerm   {cons("ToTerm"),prefer}
+    "|[" ILoc       "]|"  -> StrategoTerm   {cons("ToTerm")}
+    "|[" IStmt      "]|"  -> StrategoTerm   {cons("ToTerm")}
+    "|[" IType      "]|"  -> StrategoTerm   {cons("ToTerm")} 
+    "|[" IFunc      "]|"  -> StrategoTerm   {cons("ToTerm")}
+    "|[" IProgram   "]|"  -> StrategoTerm   {cons("ToTerm")}
+
+    "~"  StrategoTerm     -> ILoc           {cons("FromTerm"),prefer}
+    "~"  StrategoTerm     -> IStmt          {cons("FromTerm"),prefer}
+    %%"~"  StrategoTerm   -> Id            {cons("FromTerm"),prefer}
+    "~"  StrategoTerm     -> IStmt          {cons("FromTerm"),prefer}
+
+  context-free syntax
+   "|[" IStmt    "]|" -> Strategy {cons("ToStrategy"),prefer}
+   "|[" IStmt    "]S|" -> Strategy {cons("ToStrategy"),prefer}
+
+    "~~" Strategy      -> ILoc         {cons("FromStrategy")}
+    "~~" Strategy      -> IStmt        {cons("FromStrategy")}
+    "~~" Strategy      -> {Istmt ";"}* {cons("FromStrategy")}
+
+
+  variables
+    [s][0-9\']*         -> StrConst     {prefer}
+    [ijk][0-9\']*       -> IntConst     {prefer}
+    [wq][0-9\']*        -> Id           {prefer}
+ 
+    "l"[0-9\']*         -> ILoc         {prefer}
+    "is"[0-9\']*        -> IStmt        {prefer}
+    "ss"[0-9\']*        -> {IStmt ";"}* {prefer}
+    "dop"[0-9\']*	-> IOp          {prefer}
+    "cmp"[0-9\']*	-> IComp        {prefer}
+    "tt"[0-9\']*	-> IType        {prefer}
+
+  lexical syntax
+    [s][0-9\']*         -> Id   {reject}
+    [ijk][0-9\']*       -> Id   {reject}
+    "l"[0-9\']*         -> Id   {reject}
+    "is"[0-9\']*        -> Id   {reject}
+    "ss"[0-9\']*        -> Id   {reject}
+    "dop"[0-9\']*	-> Id   {reject}
+    "cmp"[0-9\']*	-> Id   {reject}
+    "tt"[0-9\']*	-> Id   {reject}

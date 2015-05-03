@@ -1,0 +1,73 @@
+module INSN
+imports Insn-Whitespace  Insn-Comment Insn-Operators
+        Insn-Lexicals Insn-Literals Insn-Types
+exports
+  sorts  IStmt IType IFunc IProgram ILoc
+  context-free syntax
+
+    "program" IFunc* "end"	 -> IProgram {cons("PROGRAM")}
+
+   %% function in-args body out-args
+    "function" {ILoc ","}* {IStmt ";"}* 
+	{ILoc","}*  "end"	-> IFunc {cons("FUNCTION")}
+
+    "enter_func"		-> IStmt {cons("ENTER_FUNC")}
+    "leave_func"		-> IStmt {cons("LEAVE_FUNC")} 
+
+    "Mem"  Id "of"  IType 	-> ILoc {cons("LOC")}  
+    "label" Id ":"		-> IStmt {cons("LABEL")} 
+    ILoc ":=" IntConst		-> IStmt {cons("CONST")} 
+    ILoc "addressof" "(" Id ")"	-> IStmt {cons("LABELREF")} 
+    IOp "(" ILoc* "," Iloc* ")" -> IStmt {cons("DATA")}
+    ILoc ":= *" ILoc		-> IStmt {cons("LOAD")}
+    "*" ILoc ":=" ILoc		-> IStmt {cons("STORE")}
+    "branch" IComp "(" ILoc? ")" "iftrue"
+         ILloc "iffalse" ILoc?	-> IStmt {cons("BRANCH")}
+
+    "jump"   IComp ILoc? "goto" Loc -> IStmt {cons("CALL")} 
+
+    "birth" ILoc			-> IStmt  {cons("NOTE_LOC_BIRTH")}
+    "death" ILoc			-> IStmt  {cons("NOTE_LOC_DEATH")}
+    "lstart" Id			-> IStmt  {cons("NOTE_LOOP_START")}
+    "lfinish" Id			-> IStmt  {cons("NOTE_LOOP_FINISH")}
+
+   
+   %% InArg(Loc, i) reads an incoming argument of the current
+   %% function from stack into a location.
+   "in_arg" ILoc IntConst	-> IStmt  {cons("IN_ARG")}
+
+
+   %% InRet(i, Loc) writes a return value of the current function
+   %% to stack from a location
+   "ret_vat" IntConst  ILoc 	-> IStmt  {cons("IN_RET")}
+
+   %% OutArg(i, Loc) writes an argument from a location into an 
+   %% outgoing stack frame
+   "out_arg" IntConst  ILoc 	-> IStmt  {cons("OUT_ARG")}
+
+   %% OutRet(Loc, i) reads an outgoing (outcoming?) return value
+   %% from the stack frame of a called function.
+   "out_ret_val" ILoc  IntConst-> IStmt  {cons("OUT_RET")}
+
+   %% AllocFrame(n,m) allocates an outgoing stack frame of n
+   %%  arguments and m return values
+   "alloc_frame"  IntConst  IntConst -> IStmt  {cons("ALLOC_FRAME")}
+
+   %% FreeFrame(n,m) pops off a stack frame of n arguments and m 
+   %% return values
+   "free_frame" IntConst  IntConst -> IStmt  {cons("FREE_FRAME")}
+
+
+    %% Memory heap allocation
+    "alloc_static" Loc  IntConst  -> IStmt  {cons("ALLOC_STATIC")}
+    "free_static"  Loc  IntConst  -> IStmt  {cons("FREE_STATIC")}
+
+    "alloc_string" Id "=" StrConst    -> IFunc{cons("ALLOC_STRING")}
+
+   "seqs" {IStmt ";"}+		   -> IStmt  {cons("SEQS")}
+   "seq" IStmt IStmt		   -> IStmt  {cons("SEQ")}
+
+ 
+
+
+

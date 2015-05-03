@@ -1,0 +1,19 @@
+module octave/program/frontend/pp-octave
+imports 
+  liblib stratego-xt-xtc-tools 
+  liboctavec
+strategies
+
+  io-pp-octave =
+    xtc-io-wrap(pp-octave-options, xtc-pp-octave)
+
+  xtc-pp-octave =
+      xtc-ast2abox(!["RealOctave-pretty.pp.af"])
+    ; xtc-abox2text
+
+  pp-octave-options =
+    Option("--no-ensugar",        
+      where(<set-config>("--no-ensugar",() )),
+      !"--no-ensugar   Do not perform ensugaring")
+
+

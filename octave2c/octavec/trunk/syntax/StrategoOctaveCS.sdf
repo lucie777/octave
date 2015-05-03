@@ -1,0 +1,93 @@
+module StrategoOctaveCS
+imports StrategoRenamed Octave-Concrete-SyntaxRenamed type-specification OctaveTC-Variables OctaveTC-Congruences
+hiddens
+  context-free start-symbols StrategoModule
+
+
+exports
+
+  context-free syntax
+
+    		"|[" OctaveModule    "]|"  	-> StrategoPreTerm	{cons("ToTerm"),prefer}
+    		"|[" OctaveExp       "]|"  	-> StrategoPreTerm	{cons("ToTerm"),prefer}
+    "Exp"	"|[" OctaveExp       "]|"	-> StrategoPreTerm	{cons("ToTerm"),prefer}
+    "LValue"	"|[" OctaveLValue    "]|"	-> StrategoPreTerm	{cons("ToTerm"),prefer}
+    "IntConst"	"|[" OctaveIntConst  "]|" 	-> StrategoPreTerm	{cons("ToTerm"),prefer}
+
+
+  context-free syntax
+
+
+    "~"  StrategoTerm -> OctaveExp            {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> OctaveLValue         {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> OctaveDec            {cons("FromTerm")}
+    "~*" StrategoTerm -> {OctaveExp ","}+     {cons("FromTerm")}
+    "~*" StrategoTerm -> {OctaveExp ";"}+     {cons("FromTerm")}
+
+    "~id:"   StrategoTerm -> OctaveId          {cons("FromTerm")}
+    "~int:"  StrategoTerm -> OctaveIntConst    {cons("FromTerm")}
+    "~real:" StrategoTerm -> OctaveRealConst   {cons("FromTerm")}
+    "~str:"  StrategoTerm -> OctaveStrConst    {cons("FromTerm")}
+
+   context-free syntax
+
+    		"|[" OctaveModule    "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    		"|[" OctaveDec       "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    		"|[" OctaveExp       "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "Exp"	"|[" OctaveExp       "]|"	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "LValue"	"|[" OctaveLValue    "]|"	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "IntConst"	"|[" OctaveIntConst  "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+		"|[" TypeShape "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+%%%		"|[" Type "]|"		-> StrategoTerm	{cons("ToTerm"),prefer}
+    "tp"  	"|[" TypeShape "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+
+
+  context-free syntax
+
+
+    "~"  StrategoTerm -> OctaveExp            {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> OctaveLValue         {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> TypeShape	{cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> OctaveDec            {cons("FromTerm")}
+    "~*" StrategoTerm -> {OctaveExp ","}+     {cons("FromTerm")}
+    "~*" StrategoTerm -> {OctaveExp ";"}+     {cons("FromTerm")}
+
+    "~id:"   StrategoTerm -> OctaveId          {cons("FromTerm")}
+    "~int:"  StrategoTerm -> OctaveIntConst    {cons("FromTerm")}
+    "~real:" StrategoTerm -> OctaveRealConst   {cons("FromTerm")}
+    "~str:"  StrategoTerm -> OctaveStrConst    {cons("FromTerm")}
+    "~ty:"   StrategoTerm -> TypeShape   {cons("FromTerm")}
+
+  context-free syntax
+    Type      -> Id {reject}
+    TypeShape -> Id {reject}
+    TypeShape -> Exp {reject}
+
+
+
+              "|[" OctaveBinOp "]|" -> StrategoTerm {cons("ToTerm")} 
+           "|[" OctaveAssignOperator "]|" -> StrategoTerm {cons("ToTerm")}
+          "|[" OctavePostfixOp "]|" -> StrategoTerm {cons("ToTerm")}
+    "pre"  "|[" OctavePrefixOp "]|" -> StrategoTerm {cons("ToTerm")}
+   "post" "|[" OctavePostfixOp "]|" -> StrategoTerm {cons("ToTerm")}
+
+  context-free syntax
+
+    "<"  StrategoStrategy ">" -> OctaveExp            {cons("FromApp"),prefer}
+    
+    "<"  StrategoStrategy ">" -> OctaveLValue         {cons("FromApp"),prefer}
+    "<"  StrategoStrategy ">" -> OctaveDec            {cons("FromApp")}
+    "<*" StrategoStrategy ">" -> {OctaveExp ","}+     {cons("FromApp")}
+    "<*" StrategoStrategy ">" -> {OctaveExp ";"}+     {cons("FromApp")} 
+    "<*" StrategoStrategy ">" -> {OctaveLValue ","}+     {cons("FromApp")} 
+
+
+    "<"  StrategoStrategy ">" -> TypeAn         {cons("FromApp"),prefer}
+
+    "<id:"   StrategoStrategy ">" -> OctaveId             {cons("FromApp")}
+    "<multi:" StrategoStrategy ">" -> {OctaveLValue ","}+ {cons("FromApp"),prefer}
+    "<int:"  StrategoStrategy ">" -> OctaveIntConst	    {cons("FromApp")}
+    "<real:" StrategoStrategy ">" -> OctaveRealConst      {cons("FromApp")}
+    "<str:"  StrategoStrategy ">" -> OctaveStrConst       {cons("FromApp")}
+
+

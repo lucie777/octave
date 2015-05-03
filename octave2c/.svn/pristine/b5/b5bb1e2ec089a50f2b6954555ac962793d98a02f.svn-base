@@ -1,0 +1,3 @@
+module StrategoOctaveINSN
+imports StrategoOctave StrategoINSN
+

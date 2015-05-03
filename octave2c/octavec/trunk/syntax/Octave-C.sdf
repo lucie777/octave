@@ -1,0 +1,30 @@
+module Octave-C
+imports Stratego-C 
+
+hiddens 
+  context-free start-symbols StrategoModule 
+
+exports
+    
+
+
+  context-free syntax
+
+    "~id:"    StrategoTerm -> CId         {cons("FromTerm")}
+    "~int:"   StrategoTerm -> IntLiteral  {cons("FromTerm")}
+    "~real:"  StrategoTerm -> FloatLiteral {cons("FromTerm")}
+    "~str:"   StrategoTerm -> StringLiteral {cons("FromTerm")}   
+    "~arr:"   StrategoTerm -> Initializer {cons("FromTerm")}  
+
+  variables 
+    [xyzfglc][0-9\']*       -> CId      {prefer}
+    [xyzfgl][0-9\']*  "*"   -> {CId ","}* {prefer}
+    [ijk][0-9\']*	    -> IntLiteral{prefer}
+    "ft" [0-9\']*	    -> FloatLiteral {prefer}
+    "str"[0-9\']*           -> StringLiteral {prefer}
+
+  context-free syntax
+
+%%    "~ext-def*:"   StrategoTerm -> ExternalDef* {cons("FromTerm")}
+    "~ext-def+:"   StrategoTerm -> ExternalDef+ {cons("FromTerm")}
+    "~dec+:"       StrategoTerm -> Declaration+ {cons("FromTerm")}

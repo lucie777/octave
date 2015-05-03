@@ -1,0 +1,46 @@
+module octave/program/optimize/common-subexpression-elimination
+imports 
+  liblib 
+  octave/program/optimize/copy-propagation
+ overlays
+  info-level = Debug() // Info() 
+  
+strategies
+
+  io-common-subexpression-elimination = 
+    io-wrap(cse)
+
+  cse = 
+    forward-prop(fail, id, cse, cse-after  | ["CSE"], [], []) 
+
+  dr-new(|s,d) = ?"CSE" ; new-CSE(|s,d)
+  dr-undefine(|dep) = ?"CSE" ; undefine-CSE(|dep)
+  
+  cse-after = 
+    cse-assign <+ {o,t: ?o; CSE; ?t; cse-notice(|o,t) } 
+
+  cse-assign = 
+    ? |[ x = e ]| 
+    ; where( <pure-and-not-trivial(|x)> |[ e ]| ) 
+    ; where( get-var-dependencies => xs ) 
+    ; where( innermost-scope-CSE => z ) 
+    ; rules( CSE.z : |[ e ]| -> |[ x ]| depends on xs ) 
+
+  innermost-scope-CSE =
+    get-var-names => vars
+    ; innermost-scope-CSE(elem-of(|vars))
+
+  cse-function-effects =
+    map({?x; undefine-dynamic-rules(|["CSE"], x)} )
+
+  pure-and-not-trivial(|x) =
+    not(?|[ i ]| + ?|[ y ]|)    // not trivial
+  ; pure                      // no side effects
+  ; not(oncetd(?|[ x ]|))     // does not contain lvalue
+
+  pure =
+    ?|[ i ]| 
+  + ?|[ x ]| 
+  + BinOp(pure,id,pure)
+
+  cse-notice(|s,t)    = log(|info-level(),["CSE expression '",s,"' for '",t,"'"])

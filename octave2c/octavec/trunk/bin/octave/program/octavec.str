@@ -1,0 +1,110 @@
+module octave/program/octavec
+imports 
+  liboctavec
+  liblib
+  octave/config/options
+strategies
+  io-octavec = 
+    xtc-input-wrap(compiler-options, octave-compiler)
+
+  octave-compiler = 
+    FILE(base-filename;remove-extension => base )
+  ; if <get-config>"--script" then
+      generate-script-wrapper
+    ; compile-octave(|base)
+    else
+      compile-octave(|base)
+    end
+
+   compile-octave(|base) =
+     octave-front-end
+   ; octavec-tool(|"remove-implicit-assignments","Removing implicit assignments to 'ans'",2,"ans")
+   ; if not(<get-config>"--o2o") then
+       octavec-tool(|"make-print-statements-explicit","Making print statements explicit",2,"print")
+     end
+   ; switch (<get-config>"--opt" <+ <get-config> "--opts") => opts <+ id
+       case is-list : execute-optimizations(|opts)
+       case ()      : octave-opt(![])
+       otherwise    : id
+     end
+   ; if <get-config>"--loop-opt" then
+       octavec-tool(|"Octave-Loop-Forward-Subst","Loop forward substitution",2,"lfs")
+     ; octavec-tool(|"Octave-IVS","Induction variable substitution",2,"ivs")
+     ; octavec-tool(|"Octave-Normalize-Loop","Normalizing for loops",2,"normloop")
+     ; octavec-tool(|"Octave-Vectorize","Vectorize for loops",2,"vec")
+     end
+   ; if <get-config>"--tc" then
+        octavec-tool(|"constant-propagation","Constant Propagation",2,"cp")
+        ; octavec-tool(|"partial-evaluation","Partial Evaluation",2,"pe")
+        ; octavec-tool(|"dead-function-elimination","Dead Function Elimination",2,"df")
+        ;octave-typeshape(![],![])
+     end
+   ; if <get-config>"--ppopts"; ?ppopts then
+       execute-optimizations(|ppopts)
+     end
+   ; if not(<get-config>"--o2o") then
+       generate-c-code
+     ; generate-executable(|base)
+     else
+       output-octave
+     end
+
+  execute-optimizations(|opts) =
+    switch !opts 
+      case ?[s|t] : octavec-tool(|s,"Optimizing with ",2,s)
+      	   	    ; execute-optimizations(|t)
+      case ?[]    : id
+    end
+
+  generate-script-wrapper = 
+    where(
+      <readdir;map(remove-extension)>"."
+    ; new => x 
+    ; <concat-strings>[x,".m"] => fn
+    ; <assert(!TempFiles())> (fn, ())
+    )
+  ; <concat-strings>[ "# generated script wrapper\n\n"
+                    , "function ", x,"\n"
+                    , <?FILE(<guarantee-extension(|"m");read-text-file>)> 
+                    , "\nend\n"
+                    ]
+  ; <write-text-file>(fn,<id>)
+  ; !FILE(x)
+
+  output-octave =
+    xtc-transform(!"pp-octave")
+  ; copy-to(<get-config>"--o2o")
+
+  generate-c-code =
+    octavec-tool(|"octave2c","Generating C++ code",2,"cc")
+  ; xtc-transform(!"ast2abox",!["-p",<xtc-find>"C-pretty1.pp.af"])
+  ; xtc-transform(!"abox2text")
+
+  generate-executable(|base) =
+     where(
+       <concat-strings>[base,".cc"] => fcc
+     ; <concat-strings>[base,".o"] => fobj
+     ; <assert(!TempFiles())> (fobj, ())
+     ; <if-keep1(<concat-strings>[base,".mkoctfile.log"])>"/dev/null" => flog
+     )
+   ; copy-to(!fcc)
+   ; if not(<get-config>"-c") then
+       if <get-config>"--dld" then
+         log(|Notice(),"Generating .oct")
+       ; <call(|None(),None(),Some(<STDERR_FILENO> /*<open>flog*/))>
+           (<xtc-find>"mkoctfile",[fcc])
+       else
+         log(|Notice(),"Generating stand-alone application")
+       ; <call(|None(),None(),Some(<STDERR_FILENO> /*<open>flog*/))>
+           (<xtc-find>"mkoctfile",["--link-stand-alone",fcc,"-o",base])
+       ; <call>("chmod",["+x",base])
+       ; !FILE(base)
+       end
+     end
+   
+  write-text-file =
+    ?(file, string)
+  ; <fopen> (file, "w")
+  ; <fputs> (string, <id>)
+  ; fclose
+

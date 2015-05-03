@@ -1,0 +1,303 @@
+module octave/program/front/eliminate-side-effects
+imports 
+  liblib 
+  liboctavec
+
+strategies
+
+  io-eliminate-side-effects = 
+    io-wrap(elim-side-effects)
+
+
+  elim-side-effects =  
+      lift-effects
+       ; hoist-effects
+       ; innermost( SeqSeq )
+
+
+   lift-effects =
+     (on-context(lift-effects) <+ all(lift-effects))
+     ; try(SideEffNoContext)
+ 
+
+  on-context(s) =
+   (
+        |[ <id> = <id>]| ; preserve-effects
+     <+ |[ [<multi:id>] = <id>]| ; preserve-effects
+     <+ |[ while <preserve-effects> do <s> end ]|
+     <+ |[ if <preserve-effects> then <s> else <s> end]|
+     <+ |[ if <preserve-effects> then <s> end]|
+     <+ |[ for <id:id> = <preserve-effects> do <s> end]|
+
+   )
+
+
+
+  preserve-effects =
+     bottomup(try(ElimSideEff))
+
+  no-context =
+     bottomup(try(SideEffNoContext))
+
+
+
+rules 
+
+
+ SideEffNoContext:
+   |[ ++lv ]| -> Silent(|[ lv = (lv + 1) ]|)
+
+ SideEffNoContext:
+   |[ --lv ]| -> Silent(|[ lv = (lv - 1) ]|)
+
+ SideEffNoContext:
+   |[ lv++ ]| -> Silent(|[ lv = (lv + 1) ]|)
+ 
+ SideEffNoContext:
+   |[ lv-- ]| -> Silent(|[ lv = (lv - 1) ]|)
+
+
+
+ /* With side effect and context  */
+
+ ElimSideEff:
+  |[ ++lv ]| -> |[ { e1; lv }]|
+  where !Silent(|[lv = (lv + 1) ]|) => e1
+ 
+ ElimSideEff:
+  |[ --lv ]| -> |[ {e1 ; lv}]|
+  where !Silent(|[ lv = (lv - 1)]|) => e1
+
+ ElimSideEff: 
+   |[ lv-- ]| -> |[ { e1; y; e2}]|
+    where new => y
+	;!Silent(|[ y = lv]|) => e1
+	;!Silent(|[ lv = (lv - 1) ]|) => e2
+	 
+ 
+ ElimSideEff:
+   |[ lv++ ]| -> |[ {e1; y; e2 }]|
+    where new => y
+	;!Silent(|[ y = lv]|) => e1
+	;!Silent(|[ lv = (lv + 1) ]|) => e2
+ 
+strategies
+
+  hoist-effects =
+    innermost(       
+	 HoistEffectFromBinOp + 
+	 HoistEffectFromUnOp  + HoistEffectFromRange +
+     HoistEffectFromSubscript + HoistEffectFromMatrix +
+     HoistEffectFromCondition + HoistEffectFromCall  +
+	 HoistEffectFromCellIndex + HoistEffectFromCell +
+ 
+     AssignAssign  + AssignSilentAssign +
+	 AssignLiftExp + AssignIf +
+	 AssignStat1   + AssignSeq     + 
+	 SplitSeq      + SilentStat    +
+	 SingletonSeq  + AssocSeqR     
+
+    )
+
+rules 
+
+/* Function calls */
+
+
+
+ HoistEffectFromCall :
+  |[ f(a*) ]|  -> sts
+  where  <fetch(IsEffect + ?|[ g(a2*) ]|)> a*
+      ; <map(ArgToTemp); unzip> a* => (asgs, a1*) 
+      ; <last-statement(|Call(Var(f),a1*))>asgs => sts
+
+  
+// Binary operators
+
+  HoistEffectFromBinOp :
+  |[ e1 bo e2 ]| ->|[ {e; (x bo e2)} ]|
+    where <IsEffect> |[ e1 ]|
+        ; <not(IsEffect)> |[ e2 ]|
+        ; new => x
+	; !Silent(|[x = e1]|) => e
+ 
+  HoistEffectFromBinOp :
+  |[ e1 bo e2 ]| -> |[ {e3; e4; (x bo y) }]|
+    where <IsEffect> |[ e2 ]|
+        ; new => x ; !Silent(|[x = e1]|) => e3
+        ; new => y ; !Silent(|[y = e2]|) => e4
+
+// Unary operators
+
+  HoistEffectFromUnOp :
+  |[ uo e ]| -> |[ {e1; ( uo x )} ]|
+    where <IsEffect> |[ e ]|
+        ; new => x ; !Silent(|[x = e]|) => e1
+
+  HoistEffectFromUnOp :
+  |[ e uo ]| -> |[ {e1;  ( x uo) } ]|
+    where <IsEffect> |[ e ]|
+        ; new => x ; !Silent(|[x = e]|) => e1
+
+
+
+// Range
+  HoistEffectFromRange :
+  |[ (e1:e2:e3) ]| -> |[ {e;  (x:e2:e3) } ]|
+  where <IsEffect> |[ e1 ]|
+	; <not(IsEffect)>  |[ e2 ]|
+	; <not(IsEffect)> |[ e3 ]|
+	; new => x; !Silent(|[x = e1]|) => e
+   
+ HoistEffectFromRange :
+ |[ (e1:e2:e3) ]| -> |[ {e4; e5; (x:y:e3) } ]|
+  where  <IsEffect> |[ e2 ]|
+	; <not(IsEffect)>  |[ e3 ]|
+        ; new => x ; !Silent(|[x = e1]|) => e4
+        ; new => y ; !Silent(|[y = e2]|) => e5
+
+ HoistEffectFromRange :
+ |[ (e1:e2:e3) ]| -> |[ {e4;e5;e6; (x:y:z) } ]|
+  where <IsEffect>  |[ e3 ]|
+	; new => x ; !Silent(|[ x = e1]|) => e4
+	; new => y ; !Silent(|[ y = e2]|) => e5
+	; new => z ; !Silent(|[ z = e3]|) => e6
+
+
+ // Subscripts
+
+ HoistEffectFromSubscript :
+  |[ lv[a*] ]| -> sts
+    where <fetch(IsEffect)> a*
+        ; <map(ArgToTemp); unzip> a* => (asgs, a1*)
+        ; <last-statement(|Subscript(lv,a1*))>asgs => sts
+ // Index
+
+ HoistEffectFromCellIndex :
+  |[ lv{a*} ]| -> sts
+    where <fetch(IsEffect)> a*
+        ; <map(ArgToTemp); unzip> a* => (asgs, a1*)
+        ; <last-statement(|CellIndex(lv,a1*))>asgs => sts
+
+
+// Cell
+
+  HoistEffectFromCell :
+   Cell(as) -> sts
+    where <oncetd(IsEffect)> as
+        ; <split-rows> as => (asgs,vs)
+        ; <last-statement(|Cell(vs))>asgs => sts
+
+// Matrix
+
+  HoistEffectFromMatrix :
+   Matrix(as) -> sts
+    where  <oncetd(IsEffect +  do-lift-expr)> as
+        ; <split-rows> as => (asgs,vs)
+        ; <last-statement(|Matrix(vs))>asgs => sts
+
+// Control flow
+
+  HoistEffectFromCondition :
+  |[ if e then e1 else e2 end ]| -> |[{e3; if x then e1 else e2 end }]|
+    where <IsEffect> e
+	 ; new => x; !Silent(|[ x = e]|) => e3
+
+  HoistEffectFromCondition :
+  |[ if e then e1 end ]| -> |[{ e3; if x then e1 end }]|
+   where <IsEffect> e
+	 ; new => x; !Silent(|[ x = e]|) => e3
+ 
+  HoistEffectFromCondition :
+  |[ while e do e1 end ]| -> |[{e2; while x do e3 end }]|
+    where   <IsEffect> |[ e ]|
+	; new => x 
+	; !Silent(|[ x = e ]|) => e2
+        ; <(?Stats(<id>) <+ ![<id>])>|[ e1 ]|
+        ; last-statement(|e2) => e3
+
+
+
+  HoistEffectFromCondition :
+  |[ for x = e do e1 end ]| -> |[{e2; for x = y do e1 end }]|
+  where <IsEffect> e
+	; new => y ; !Silent( |[ y = e ]|) => e2
+
+
+
+// Assignment
+   AssignMultiSeq :
+    AssignMulti(lvs, "=", Stats([e1|es])) -> Stats([e1, AssignMulti(lvs, "=", Stats(es))])
+
+   AssignMultiSeq :
+    AssignMulti(Stats([e1 | es]), "=",e3) -> 
+      Stats([e1, AssignMulti(Stats(es), "=", e3)])
+
+
+  AssignStat1 :
+  |[ lv = {e1; e2; es*} ]| ->   |[ {e; e2; es*} ]|
+   where  <isExpression> e1; !Silent( |[ lv = e1 ]|) => e
+
+
+  
+
+
+//----------- done till here
+
+   AssignLiftExp :
+  |[ lv = {e1; e2; es*} ]| -> |[ {e1; e3} ]|
+   where <IsEffect> e1
+	; !Silent(|[lv = {e2; es*} ]|) => e3
+
+
+   AssignSeq :
+   Assign(Stats([e1 | es*]),"=", e3) -> Stats([e1, Silent(Assign(Stats(es*),"=",e3))])
+   where <IsEffect> e1
+
+   AssignSeq :
+   Assign(Stats([lv | es*]),"=", e3) -> |[ {e;  es*} ]|
+   where <isLValue> lv; !Silent(|[lv = e3]|) => e
+
+
+   AssignSilentAssign :
+   Assign(lv,"=", Silent(|[ y = e]|)) ->  Stats([Silent(|[y = e]|),Silent(|[lv = y ]|)]) 
+   where  <isLValue> lv
+
+   AssignAssign :
+   Assign(lv,"=", |[ y = e]|) -> Stats([Silent(|[y = e]|),Silent(|[lv = y ]|)]) 
+   where  <isLValue> lv
+
+   AssignIf :
+   Assign(lv,"=", If(e1,e2,e3)) -> |[ if e1 then e4 else e5  end]|
+   where !Silent(|[lv=e2]|) => e4; !Silent(|[lv=e3]|) => e5
+
+
+
+ // Sequence of Statements
+
+  SilentStat:
+   Silent(Stats(s)) -> Stats(s)
+
+
+  SplitSeq :
+  |[ {e1; e2; es*} ]| -> |[ {e1; {e2; es*}} ]|
+    where <not(?[])> es*
+
+
+  AssocSeqR :
+  |[ {{ e1; es*}; es2*} ]| -> |[ { e1; {es*}; es2*} ]|
+
+  SingletonSeq :
+    Stats([e]) -> e
+ 
+
+ // To clean up the mess
+  SeqSeq:
+  |[ { e1; { es*}} ]| -> |[ { e1; es*}]|
+
+
+
+ strategies
+
+  last-statement(|e) =
+    at-end(![ e ]); !Stats(<id>)

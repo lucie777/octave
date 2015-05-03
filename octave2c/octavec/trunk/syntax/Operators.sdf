@@ -1,0 +1,43 @@
+module Operators
+exports
+  sorts BinOp RelOp UnOp
+
+  context-free start-symbols
+    BinOp RelOp UnOp
+  context-free syntax
+    "+"	  -> BinOp {cons("PLUS")}
+    "*"   -> BinOp {cons("MUL")}
+    "-"   -> BinOp {cons("MINUS")}
+    "/"   -> BinOp {cons("DIV")}
+    "^"   -> BinOp {cons("POWER")}
+    "\\"  -> BinOp {cons("LDIV")}
+    ".*"  -> BinOp {cons("E_MUL")}
+    "./"  -> BinOp {cons("E_DIV")}
+    ".\\" -> BinOp {cons("E_LDIV")}
+    ".^"  -> BinOp {cons("E_POWER")}
+    ".+"  -> BinOp {cons("E_PLUS")}
+    ".-"  -> BinOp {cons("E_MINUS")}
+
+    "<<"  -> BinOp {cons("LSHIFT")}
+    ">>"  -> BinOp {cons("RSHIFT")}
+
+    "&"   -> RelOp {cons("AND")}
+    "&&"  -> RelOp {cons("LAZYAND")}
+    "|"   -> RelOp {cons("OR")}
+    "||"  -> RelOp {cons("LAZYOR")}
+
+    "=="  -> RelOp {cons("EQ")}
+    "~="  -> RelOp {cons("NE")}
+    "<"   -> RelOp {cons("LT")}
+    ">"   -> RelOp {cons("GT")}
+    "<="  -> RelOp {cons("LE")}
+    ">="  -> RelOp {cons("GE")}
+
+    "!"   -> UnOp {cons("NOT")}  
+    "-"   -> UnOp {cons("UMINUS")}  
+   ".'"  -> UnOp {cons("E_CONJUGATE")}
+    "'"   -> UnOp {cons("CONJUGATE")}
+    "++"  -> UnOp {cons("SE_PRE_PLUS")}
+    "--"  -> UnOp {cons("SE_PRE_MINUS")}
+    "++p" -> UnOp {cons("SE_POST_PLUS")}
+    "--p" -> UnOp {cons("SE_POST_MINUS")}

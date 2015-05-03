@@ -1,0 +1,167 @@
+module octave/program/optimize/dead-code-elimination
+imports 
+  liblib 
+  liboctavec
+  liboctave-eval
+overlays
+  info-level = Debug()
+  
+strategies
+
+ io-dead-code-elimination =
+    io-wrap( {| IsGlobal, IsStatic: dce-elimination |} )
+    
+    dce-elimination = 
+      {| VarNeeded 
+         : Prog(id, mark-uses) 
+         ; Prog(elim-code; filter(not(?Stats([]))), clean-code )
+      |} 
+
+  elim-code =
+    (  VarNeeded
+    <+ ReturnNeeded
+    <+ is-global 
+    <+ is-static   
+    <+ elim-stats(elim-code)
+    <+ {o,t: ?o; elim-if(elim-code); ?t; elimination-notice(|o,t) }
+    <+ elim-while(elim-code)
+    <+ elim-for(elim-code) 
+    <+ elim-assignment(elim-code)
+    <+ elim-multi-assignment(elim-code)
+    <+ elim-unwind-protect(elim-code)
+    <+ elim-functions(elim-code)
+    <+ all(elim-code)
+   )
+ 
+  VarNeeded =
+    ?|[ x ]|
+    ; where(not(IsGlobal); not(IsStatic))
+    ; rules( 
+        Needed : |[ x ]|
+      )
+
+  non-statement =
+       \ |[ e1 bo e2 ]| -> [e1, e2] \ 
+    <+ \ PrefixExp(_,e) -> [e] \
+    <+ \ PostfixExp(e,_) -> [e] \
+    <+ \ |[ lv ]|   -> [] \
+    <+ \ |[ i ]|   -> [] \
+    <+ \Float(x) -> []\
+    <+ \String(x) -> []\
+    <+ \Matrix(xs) -> []\
+    <+ \Cell(xs)  -> [] \
+    <+ \ |[ (e: e1: e2) ]|-> []\
+    <+ \ |[ nil ]| -> [] \
+
+  collect-statements =
+    non-statement
+    ; foldr(id, conc, collect-statements)
+    <+ ![<id>]
+
+  elimination-notice(|s,t)    = log(|info-level,["Removed '",s,"' for '",t,"'"])
+  elimination-func-notice(|s,t) = log(|info-level,["Function Removed '",s,"' for '",t,"'"])
+
+  
+  // Multi assignments
+  elim-assignment(s) = 
+   elim-self-assignment <+ eliminate-assignment(s)
+
+   elim-self-assignment =
+      ?|[ lv = lv ]|
+    ; !Stats([])
+
+  eliminate-assignment(s) =
+    ?|[ x = e ]| 
+    ; |[ <id> = <s> ]|
+    ; where (<not(IsGlobal + IsStatic)> |[ x ]| )
+    ; if <Needed> |[ x ]|  
+      then rules( 
+              Needed :- |[ x ]| 
+           ) ; |[ <id> = <s> ]|
+      else ?o; <collect-statements> e =>es*; !Stats(<id>); s
+	; ?t; elimination-notice(|o,t)
+      end
+ 
+
+  elim-multi-assignment(s) =
+     ?|[ [lvs*] = e ]|
+    ; if <not(oncetd( Needed <+ IsGlobal <+ IsStatic))>lvs*
+      then <collect-statements> e => es*; !Stats(<id>); s
+      else |[ [<multi:id>] = <s> ]| end
+
+
+  elim-functions(s) = 
+  {| Needed,ReturnNeeded : 
+     ?Function(x*,f,a*,b)
+    ; <conc>(a*,x*) => needed-vars
+    ; map(VarNeeded)
+    ; rules(
+	  ReturnNeeded: Return() -> Return() 
+	     where  <map(VarNeeded)> needed-vars
+	)
+    ; <(?Stats(<id>) <+ ![<id>])> b => body
+    ; <s; not(EmptySilent)> Stats(body) => es*
+    ; !Function(x*,f,a*,es*)
+ |}
+
+  mark-uses =
+    (   VarNeeded
+     <+ elim-self-assignment
+     <+ is-global
+     <+ all(mark-uses)
+    )
+
+strategies
+
+   elim-if(s) =
+    ?|[ if e then e1 else e2 end ]| 
+    ; (|[ if <id> then <s> else <id> end]| \Needed/ |[ if <id> then <id> else <s> end]|)
+    ; |[ if <s> then <id> else <id> end ]|
+    ; where(<used-in-condition> |[ e ]| )
+    //; try(ElimIf)
+
+
+  elim-while(s) =
+      ?|[ while e do e1 end ]| 
+    ; where(<used-in-condition> |[ e ]| )
+    ; (\Needed/* |[ while <s> do <s> end]|)
+    //; (id \Needed/ |[ while <s> do <s> end]|)
+    ; where(<used-in-condition> |[ e ]|)
+    ; try(ElimWhile)
+
+  elim-for(s) =
+    ?|[ for x = e do e1 end]| 
+    ; (\Needed/* |[ for <id:id> = <s> do <s> end]|)
+    //; (id \Needed/ |[ for <id:id> = <id> do <s> end]|)
+    ; where(<used-in-condition> |[ e ]|)
+    ; try(ElimFor)
+
+  elim-unwind-protect(s) =
+     ?|[ unwind_protect e unwind_protect_cleanup e1 end]|
+   ; where(<used-in-condition> |[ e1 ]|)
+   ; |[ unwind_protect <s> unwind_protect_cleanup <id> end]|
+
+  elim-stats(s) =
+    Stats(reverse-filter(s ; not(EmptySilent)))
+ 
+
+  used-in-condition =
+    collect(?Var(_))
+  ; map(try(VarNeeded)) 
+
+  is-global =
+   (?Global(x) + ?GlobalInit(x,_))
+   ; where(<IsGlobal> Var(x) <+ rules(IsGlobal: Var(x)) )
+
+
+  is-static =
+   (?Static(x) + ?StaticInit(x,_))
+   ;where(<IsStatic> Var(x) <+ rules(IsStatic: Var(x)) )
+
+
+  clean-code =
+   bottomup(try(elim-empty-stats))
+
+  elim-empty-stats =
+  ?Stats(es)
+  ;Stats(filter(not(?Stats([]) <+ ?Silent(Stats([])))))

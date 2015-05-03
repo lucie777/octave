@@ -1,0 +1,27 @@
+module octave/program/optimize/superopt
+imports 
+  octave/program/optimize/common-subexpression-elimination
+overlays
+  info-level = Info()
+  
+strategies
+
+  io-superopt =
+    io-wrap(super-opt)
+
+strategies
+
+  super-opt = 
+    forward-prop(
+	prop-const-transform(super-opt)
+      , super-opt-before(super-opt)
+      , super-opt   
+      , super-opt-after
+      | ["PropConst","CopyProp","CSE"], [], []
+    ) 
+
+  super-opt-before(recur) =
+   try(prop-const-before(recur))
+
+  super-opt-after =
+     try(copy-prop-after); try(prop-const-after); try(cse-after)

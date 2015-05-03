@@ -1,0 +1,322 @@
+module octave/program/frontend/pack-octave
+imports 
+  liblib
+  liboctavec
+strategies
+
+  io-pack-octave =
+    octave-xtc-io-wrap(pack-octave-options, pack-octave)
+
+
+  pack-octave-options =
+    Option("--single",
+      where(<set-config>("--single",())),
+      !"--single           ")
+
+
+  pack-octave =
+    pack-octave-functions
+  ; octave-desugar
+  ; write-to
+
+  pack-octave-functions = 
+    !([<get-config>"-i"], (), [])
+  ; graph-nodes-roots( Fst; parse-octave-function ; not(BuiltinFunction+DLDFunction) ; disambiguate
+                     , get-function-calls
+                     , \ (n,x,xs) -> [x|xs] \ )
+  ; not([])
+  ; fvar-to-call
+  ; if <get-config>"--single" then
+      !Prog(<id>,Stats([]))
+    else
+      !Prog(<id>,Stats([Call(Var(<get-main>),[])]))
+    end
+ <+ say(!"Could not find input") ; fail
+
+  get-main =
+    <get-config>"-i"
+	; try(remove-extension)
+
+  get-function-calls = 
+    where(not(<get-config>"--single"))
+  ; collect(?FVar(<id>))
+  ; filter(not(is-builtin-function + is-dld-function))
+ <+ ![]
+
+strategies
+
+  disambiguate = 
+    ( traverse-forward(disambiguate) <+ all(disambiguate) )
+  ; try(disam-stats(disambiguate) )
+
+  traverse-forward(dis) = 
+     ComplexFor(map(try(VarDecl)), id, id)
+   + For(try(VarDecl), id, id)
+   + Decl(id,map(VarDecl))
+   + Decl(id,map(VarDecl))
+   + Assign(id,id,dis) ; disambiguate-assignment(dis)
+   + AssignMulti(id,id,dis) ; disambiguate-assignment(dis)
+   + {| is-variable :  
+         Function(list(varargout;VarDecl),id,list(varargin;VarDecl), id)
+       ; Function(id,id,id,dis)
+     |}
+   + Command(id,id)
+   + CommandVar
+   + {| Unwind : 
+          UnwindProtect(id,id)
+        ; rules( Unwind : a )
+        ; UnwindProtect(dis,id)
+     |}
+     ; UnwindProtect(id,dis)
+
+
+
+  varargin  = try(\ VarArgs -> Var("varargin")  \)
+  varargout = try(\ VarArgs -> Var("varargout") \)
+
+
+   /**
+    * Disambiguating in index of a subscript
+    */
+   disambiguate-assignment(dis) = 
+     Assign(VarDecl, id, id)
+   ; Assign(try(Subscript(id,dis) + CellIndex(id,dis)),id,id)
+   + AssignMulti(map(VarDecl), id, id)
+
+   disam-stats(dis) = 
+     For(id, dis, dis)
+  <+ ComplexFor(id,dis,dis)
+  <+ Bool
+  <+ Complex 
+  <+ Constant
+  <+ Call
+
+  fvar-to-call =
+    topdown(
+      try(
+        \ Subscript(FVar(f),ps) -> Call(Var(f),ps) \
+      <+ \ FVar(f) -> Call(Var(f),[]) \
+      <+ \ Subscript(CVar(f),ps) -> Command(Var(f),ps) \
+      <+ \ CVar(f) -> Command(Var(f),[]) \
+      )
+    )
+
+strategies
+
+  is-special-var =
+    not(is-variable + is-user-function )
+
+  is-a-function = 
+    not(is-variable) ; ( is-user-function + is-dld-function + is-builtin-function )
+
+  Constant : Var(n) -> Constant(n)
+    where <is-special-var>n ; is-builtin-constant
+
+  Bool : Var("true") -> True()
+    where <is-special-var>"true"
+  Bool : Var("false") -> False()
+    where <is-special-var>"false"
+
+  CommandVar: Subscript(Var(n),ps) -> Command(CVar(n),<map({x:oncetd(is-string => x);!x})>ps)
+    where  
+      not(<is-variable>n) ; not(<is-a-function>n) ; <is-command>n 
+
+  CommandVar: Var(n) -> Command(CVar(n),[])
+    where  
+      not(<is-variable>n) ; not(<is-a-function>n) ; <is-command>n 
+
+  Complex : Var(i) -> Constant(i) 
+    where 
+      <"i"+"I"+"j"+"J">i
+    ; is-special-var
+
+
+  Call : Var(f) -> FVar(f)
+     where 
+       <not(is-command)>f
+       < <not(is-variable)>f 
+         < <not(is-builtin-constant)>f 
+           < <not(is-a-function)>f 
+             < if Unwind then
+                 say(<concat-strings>[ "Warning: Variable or function '"
+                                     , f
+                                     , "' unknown, but in unwind protect!"
+                                     ])
+               else
+                 <fatal-error>["Error: Variable or function '",f,"' unknown!"] 
+               end
+             + id 
+           + fail
+         + fail
+       + fail
+
+  VarDecl : t@Var(v) -> t
+    where rules( is-variable : v -> v ) 
+    
+  VarDecl : t@FieldVar(l,_) -> t
+    where 
+      <oncetd(?Var(v))>l 
+    ; rules( is-variable : v -> v )
+    
+  VarDecl : t@Subscript(l,_) -> t
+    where  <oncetd(?Var(v))>l
+    ; rules( is-variable : v -> v )
+
+
+  VarDecl : t@Init(Var(v),_) -> t
+    where rules( is-variable : v -> v )
+
+  VarDecl : t@CellIndex(Var(v),_) -> t
+    where rules( is-variable : v -> v )
+
+
+
+signature 
+  constructors
+    CVar : Term -> Term
+    FVar : Term -> Term
+
+
+strategies
+  octave-desugar =
+    desugar
+  ; bottomup(try(flatten-stats))
+
+  flatten-stats = 
+    Stats(map(try(?Stats(<id>)+?Silent(Stats(<id>))));flatten-list) 
+
+  desugar =  
+    topdown(desugar-down)
+
+  desugar-down =  
+    repeat(  
+        SimplifyIf 
+     <+ ElimSwitch
+     <+ DesugarWhile
+     <+ SingleValueMatrix
+     <+ Integer 
+     <+ FloatConst 
+     <+ Assign
+     <+ FieldVar
+     <+ Global
+     <+ Static
+//     <+ MatrixCat
+     ) 
+
+rules
+
+  SingleValueMatrix :
+    Matrix([[el]]) -> el
+
+  DesugarWhile:
+   DoUntil(e1,e) -> |[ {e ; while !e1 do e end} ]|
+
+   /* IFS */ 
+
+  SimplifyIf:
+    Ifs([If(e,es)|ifs]) -> If(e,es,Ifs(ifs))
+
+   SimplifyIf:
+    Ifs([If(e, e1)]) -> |[ if e then e1 else {} end ]|
+
+   SimplifyIf:
+    Ifs([Else(e)]) -> e
+    
+   SimplifyIf:
+    Ifs([]) -> Stats([]) 
+
+
+  /* Switch */ 
+  ElimSwitch :
+   Switch(e, [Case(e1, e2 )| cs]) -> |[ { e3 ; if (x == e1) then e2  else e6 end} ]|
+   where <not(?Var(_))> e
+    ; new => x
+    ; !Silent(|[ x = e ]|) => e3
+    ; !Switch(Var(x),cs) => e6
+
+  ElimSwitch :
+   Switch(Var(x), [Case(e2, e3 )| cs]) ->
+    |[  if (x==e2) then e3 else e5 end ]|
+  where !Switch(Var(x),cs) => e5
+
+  ElimSwitch :
+   Switch(e, []) -> Stats([])
+
+  ElimSwitch : Switch(e, [Default(e1)]) -> |[ e1 ]|
+
+  Global =
+    ?Decl("global",ds) 
+  ; <map(  \ Init(Var(x),e) -> GlobalInit(x,e) \ 
+         + \ Var(x)         -> Global(x) \)>ds 
+  ; !Stats(<id>)
+
+   Static =
+    ?Decl("static",ds) 
+  ; <map(  \ Init(Var(x),e) -> StaticInit(x,e) \ 
+         + \ Var(x)         -> Static(x) \)>ds 
+  ; !Stats(<id>)
+   
+
+  Integer    : Number(k)   -> Int(<int-to-string>l) where <check-int>k => l
+  FloatConst : Number(f)   -> Float(<real-to-string>f) where <is-real>f
+  FieldVar   : FieldVar(lv,Var(f)) -> FieldVar(lv,f)
+
+
+  check-int =
+    where(<subt>(<real>,<int>) => 0.00) ; int
+
+/**
+ * Desugaring Assignment operators
+ */
+rules  
+
+  assign-helper(s) =
+    ?(lv,e) 
+  ; if Fst ; ?Subscript(v,idx) ; oncetd(where(?|[ ++ ]| + ?|[ -- ]| ))
+    then 
+      <map(\ xe -> Assign(Var(<new>),"=",xe) \)>idx => as
+    ; map(?Assign(<id>,_,_)) => xs
+    ; !(Subscript(v,xs),e)
+    ; !Stats(<conc>(as,[<s>]))
+    else 
+     !(lv,e);
+     !Assign(lv,"=",<s>)
+    end
+
+  assign-multi-helper(s) =
+    ?(lv,e)
+  ; <map(!(<id>,Var(<new>)))>lv => t
+  ; map(Snd) => lvs*
+  ; <map(\ (v,tv) -> Silent(Assign(v,"=",<s>)) \)>t => stmts
+  ; !Stats([ Silent(|[ [ lvs* ] = e ]|) | stmts])
+
+  Assign =
+    let get-new-op = string-as-chars(at-last(![]));not("")
+    in
+      \ Assign(a,op,Assign(b,op2,e)) -> Stats([Assign(b,op2,e), Assign(a,op,b)]) \
+    + ?Assign(v,op,e)  ; <assign-helper(!BinOp(<Fst>,<get-new-op>op,<Snd>))>(v,e)
+    + ?AssignMulti(vs,op,e)
+    ; where( <get-new-op>op => newop )
+    ; <assign-multi-helper(!BinOp(<Fst>,<get-new-op>op,<Snd>))>(vs,e)
+    end
+
+rules
+
+  MatrixCat :
+    Matrix(ls) -> Call(Var("vertcat"),as)
+      where debug;
+        not(Matrix([[id]])) 
+      ; <map(row2horzcat <+ ?[<id>] <+ !Matrix([<id>]))>ls => as@[_,_|_] 
+      ; fetch-elem(Matrix(id)) 
+
+  MatrixCat :
+    Matrix(ls) -> Matrix([as])
+      where 
+        not(Matrix([[id]]))
+      ; <map(row2horzcat <+ ?[<id>] <+ !Matrix([<id>]))>ls => as@[_] 
+      ; fetch-elem(not(Matrix(id))) 
+
+  row2horzcat : 
+    l@[_,_|_] -> Call(Var("horzcat"),l)
+    where 
+      fetch-elem(not(Number(id)))

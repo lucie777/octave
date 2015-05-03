@@ -1,0 +1,38 @@
+module StrategoOctaveTc
+imports StrategoRenamed Octave-Concrete-Syntax type-specification
+  	 OctaveTC-Variables OctaveTC-Congruences
+hiddens
+  context-free start-symbols StrategoModule
+
+
+exports
+
+  context-free syntax
+
+    		"|[" Module    "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    		"|[" Dec       "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    		"|[" Exp       "]|"  	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "Exp"	"|[" Exp       "]|"	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "LValue"	"|[" LValue    "]|"	-> StrategoTerm	{cons("ToTerm"),prefer}
+    "IntConst"	"|[" IntConst  "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+		"|[" TypeShape "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+%%%		"|[" Type "]|"		-> StrategoTerm	{cons("ToTerm"),prefer}
+    "tp"  	"|[" TypeShape "]|" 	-> StrategoTerm	{cons("ToTerm"),prefer}
+
+
+  context-free syntax
+
+
+    "~"  StrategoTerm -> Exp            {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> LValue         {cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> TypeShape	{cons("FromTerm"),prefer}
+    "~"  StrategoTerm -> Dec            {cons("FromTerm")}
+    "~*" StrategoTerm -> {Exp ","}+     {cons("FromTerm")}
+    "~*" StrategoTerm -> {Exp ";"}+     {cons("FromTerm")}
+
+    "~id:"   StrategoTerm -> Id          {cons("FromTerm")}
+    "~int:"  StrategoTerm -> IntConst    {cons("FromTerm")}
+    "~real:" StrategoTerm -> RealConst   {cons("FromTerm")}
+    "~str:"  StrategoTerm -> StrConst    {cons("FromTerm")}
+    "~ty:"   StrategoTerm -> TypeShape   {cons("FromTerm")}
+

@@ -1,0 +1,42 @@
+module octave/program/front/clean-ast
+imports 
+  liblib 
+  liboctavec        
+strategies 
+
+  io-clean-ast = 
+    io-wrap(clean-up)
+
+  clean-up=
+    bottomup-rev-list(try(EmptySeq <+ ElimEmpty))
+
+
+  bottomup-rev-list(s) =
+    rec x(all-rl(x); s)
+
+  all-rl(s) = 
+    reverse-list(s) <+ all(s)
+
+  reverse-list(s) =
+    rec x([id|x];[s|id] <+ [])
+
+rules
+ 
+  EmptySeq:
+   Silent(Stats(xs)) -> <try(ElimEmpty)> Stats(xs)
+
+  ElimEmpty:
+   Stats(xs) ->res
+  where <fetch(?NilExp() + ?Stats(_) + RemoveEmptySilent)> xs
+        ; <map(try(RemoveSilent <+ ?Stats(<id>)))> xs =>xs'
+	; <flatten-list>xs' => es
+	; !Stats(<filter(not(?NilExp() + ?Silent(NilExp()) + RemoveSilent))> es) => res
+
+
+  RemoveSilent:
+  Silent(Stats(xs)) -> xs
+
+  RemoveEmptySilent:
+  Silent(Stats([])) -> ()
+
+

@@ -1,0 +1,48 @@
+module octave/program/optimize/dead-function-elimination
+imports 
+  liblib 
+  liboctavec
+  liboctave-eval
+overlays
+  info-level = Debug()
+  
+strategies
+
+  io-dead-function-elimination =
+    io-wrap( dce-elimination )
+    
+  dce-elimination = 
+    {| Used 
+       : Prog(id, mark-uses(elim-code)) 
+       ; Prog(reverse-map(elim-code); filter(not(?Stats([]))), id )
+    |} 
+
+  elim-code =
+   (   FuncUsed(elim-code)
+    <+ elim-functions(elim-code)
+    <+ all(elim-code)
+   )
+ 
+  FuncUsed(s) =
+     |[ f(<*s>)]|
+    ; rules( Used : Var(f))
+
+  elim-functions(s) =
+     ?fcn@Function(x*,f,a*,b)
+   ; if <Used>Var(f) 
+     then Function(id,id,id,s)
+     else <remove-function(s)> fcn
+     end
+
+  remove-function(s) = 
+      ?fnc@Function(x*,f,a*,b)
+     ; where(<not(Used)>f )
+     ; !Stats([])
+     ; elimination-func-notice(|f)
+
+  mark-uses(s) =
+    (   FuncUsed(s)
+     <+ all(mark-uses(s))
+    )
+
+  elimination-func-notice(|s) = log(|info-level(),["Function Removed '",s,"'"])

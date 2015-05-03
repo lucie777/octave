@@ -1,0 +1,38 @@
+module OctaveTC-Variables
+exports
+  variables
+    [ijkn][0-9\']*   	-> IntConst 	{prefer}
+    [r][0-9\']*   	-> RealConst 	{prefer}
+    [xyzfgh][0-9\']* 	-> Id 		{prefer}
+    "es"[0-9\']*"*"     -> {Exp ";"}+  	{prefer}
+    "a"[0-9\']* "*"	-> {Exp ","}+  	{prefer}
+    "ps"[0-9\']*        -> {Exp ","}*   {prefer}
+    "lv"[0-9\']*	-> LValue       {prefer}
+    "lvs"[0-9\']* "*"	-> {LValue ","}+{prefer}
+    "bo"[0-9\']*	-> BinOp	{prefer}
+    "ro"[0-9\']*	-> BinOp	{prefer}
+    "uo"[0-9\']*	-> UnOp		{prefer}
+    [t][0-9\']*    	-> Type 	{prefer}
+    "sh"[0-9\']* "*"	-> {Exp ","}+  	{prefer}
+    "sh"[0-9\']*        -> Exp          {prefer}
+    "ts"[0-9\']*	-> TypeShape	{prefer}
+
+    "ct"[0-9\']* "*"    -> CellTyped*   {prefer}
+
+  lexical syntax
+    [ijkn][0-9\']*   	-> Id {reject}
+    [r][0-9\']*   	-> Id {reject}
+    "es"[0-9\']*"*"	-> Id {reject}
+    "a"[0-9\']*	"*"	-> Id {reject}
+    "lv"[0-9\']*	-> Id {reject}
+    "lvs"[0-9\']* "*"	-> Id {reject}
+    "bo"[0-9\']*	-> Id {reject}
+    "ro"[0-9\']*	-> Id {reject}
+    "uo"[0-9\']*	-> Id {reject}
+    [t][0-9\']*    	-> Id {reject} 
+    "sh"[0-9\']*"*"	-> Id {reject}
+    "sh"[0-9\']*        -> Id {reject}
+    "ts"[0-9\']* 	-> Id {reject}
+    "ct"[0-9\']* "*"    -> Id {reject}
+
+

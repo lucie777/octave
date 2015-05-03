@@ -1,0 +1,71 @@
+module octave/program/optimize/constant-propagation
+imports 
+  liblib 
+  octave/program/optimize/constant-folding
+  octave/lang/forward-propagation
+  dynamic-rules-utils
+overlays
+  info-level = Debug() // Info()
+
+strategies
+  io-constant-propagation = 
+    io-wrap(dynrule-options,octave-prop-const)
+
+  octave-prop-const = 
+    forward-prop( prop-const-transform(octave-prop-const)
+		, prop-const-before(octave-prop-const)
+		, octave-prop-const
+		, prop-const-after
+		| ["PropConst"], [], []
+		)
+
+  prop-const-transform(recur) =
+       ?t ; ElimIf ; recur 
+    <+ |[ while <recur> do <id> end ]|; ElimWhile; recur 
+  
+  prop-const-before(recur) =
+    |[ <id>[<*recur>] = <id> ]| + global-init
+
+
+  global-init = 
+   ?|[ global x ]|
+   ; where( rules( Globals:+ _ -> |[ x ]|) )
+
+  prop-const-after = 
+        prop-const-assign 
+     <+ ?t1 ; PropConst ; propagation-notice(|<id>,t1) 
+     <+ ?t2 ; EvalBinOp ; reduction-notice(|"expression",t2,<id>) 
+     <+ ?t3 ; EvalRelOp ; reduction-notice(|"expression",t3,<id>)
+     <+ ?t4 ; EvalFun ; reduction-notice(|"expression",t4,<id>)
+     <+ undefine-globals-after-call
+
+  propagation-notice(|s,t)    = log(|info-level(),["Propagated  '",s,"' for '",t,"'"])
+  reduction-notice(|sort,s,t) = log(|info-level(),["Reduced ",sort," '",s,"' to '",t,"'"])
+
+  prop-const-assign = 
+    ?|[ x = e ]|
+    ; where( <is-value> e ) 
+    ; rules( PropConst.x : |[ x ]| -> |[ e ]| depends on [(x,x)] )
+    ; log-dyn-rule-gen(|"PropConst",|[ x ]|,|[ e ]|)
+
+
+  undefine-globals-after-call =
+   ?|[ f(a*) ]|
+   ; where( bigbagof-Globals
+            ; map({x: ?|[ x ]|; undefine-dynamic-rules(|["PropConst"],x)}) )
+
+
+  log-dyn-rule-gen(|rule,lhs,rhs) = 
+    where(
+      if-verbose(
+        try(
+          <get-config>"--dyn-rules"
+        ; log(|Info(),["Generated ",rule," rule: ",lhs," -> ",rhs])
+        )
+      | 1
+      )
+    )
+
+  dr-new(|s,d) = ?"PropConst" ; new-PropConst(|s,d)
+  dr-undefine(|dep) = ?"PropConst" ; undefine-PropConst(|dep)
+

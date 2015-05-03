@@ -1,0 +1,709 @@
+/**
+ * Octave type inferencer.
+ *
+ * This is a rewrite of the previous tool, Octave-TC. The
+ * tool should do the same, only in a bit cleaner way. 
+ */
+module octave/program/type-inferencer/infer-types 
+imports
+  liblib
+  liboctavec
+  stratego-xt-xtc-tools 
+  octave/lang/forward-propagation
+overlays
+
+  HL = "---------------------------------------------------------------------------------------------"
+strategies
+    
+  io-infer-types = 
+   octave-io-wrap(Octave-TI) 
+
+  Octave-TI =
+    where(read-builtin-specs)
+  ; Prog(map(generate-specialization-rule( |["type-of","is-defined"] )),id)
+  ; Prog(id,infer-octave-types)
+  ; Prog(<concat>[<id>,<bagof-specialized-functions>],id)
+
+  infer-octave-types = 
+    forward-prop(
+      fail
+    , try( 
+        infer-for-statement ; try(for-range) 
+      + infer-before(infer-octave-types) 
+      )
+    , infer-octave-types
+    , infer-octave-type
+    | ["is-defined"], ["type-of"], []
+    ) 
+    
+  // fix for new compiler which does not generate these definitions
+  dr-new(|s,d) = ?"is-defined" ; new-is-defined(|s,d)
+  dr-new(|s,d) = ?"type-of" ; new-type-of(|s,d)
+
+  dr-undefine(|dep) = ?"is-defined" ; undefine-is-defined(|dep)
+  dr-undefine(|dep) = ?"type-of" ; undefine-type-of(|dep)
+  
+  infer-before(recur) =
+    |[ <id>[<*recur>] = <id> ]|
+
+  infer-before(recur) =
+    |[ <id>{<*recur>} = <id> ]|
+
+  infer-octave-type =
+    annotate-type(infer-value-type + infer-expression-type + infer-call-exp-type)
+  + infer-user-defined-function-call-exp-type
+  + infer-statement
+
+  annotate-type(s) =
+    !<id>{<s ; try(not(is-list) ; ![<id>])>}
+
+/**
+ * Expressions
+ */
+strategies
+  infer-expression-type =
+    infer-binop-exp-type
+  + infer-prefix-exp-type
+  + infer-postfix-exp-type
+  + infer-index-exp-type
+  + infer-variable-exp-type
+
+/**
+ * Binary operators
+ */
+strategies
+  infer-binop-exp-type = 
+    ?|[ e1 bo e2]| 
+  ; ( infer-binop-ov 
+    + infer-binop-b-b 
+    + infer-binop-c-c 
+    + infer-binop-s-s 
+    + infer-binop-m-m 
+    + infer-binop-m-s 
+   <+ ti-error(|"Binary operator")
+    ) 
+
+  infer-binop-ov =
+    ?|[ e1 bo e2 ]| 
+  ; where( 
+      <get-type ; is-octave-value-type>e1
+    + <get-type ; is-octave-value-type>e2 
+    )
+  ; !tp |[ universal ]|
+
+  infer-binop-m-m =
+    infer-binop-m-m-known-dims
+  + infer-binop-m-m-unknown-dims
+
+  infer-binop-m-m-known-dims :
+    |[ e1 bo e2 ]| 
+      -> ts 
+    where
+      <get-octave-type>e1 => |[ matrix(t1,sh1*) ]|
+    ; <get-octave-type>e2 => |[ matrix(t2,sh2*) ]|
+    ; fail => ts
+
+  infer-binop-m-m-unknown-dims :
+    |[ e1 bo e2 ]| -> |[ matrix(t3) ]| 
+      where 
+        <get-octave-type>e1 => |[ matrix(t1,sh1*) ]| 
+      ; <get-octave-type>e2 => |[ matrix(t2,sh2*) ]|
+      ; <not(is-relop)>bo
+      ; <calculate-max-numeric-type>[ SCALAR(t1), SCALAR(t2)] => t3
+
+
+  infer-binop-m-m-unknown-dims :
+    |[ e1 bo e2 ]| -> |[ matrix(bool) ]| 
+      where 
+        ( <get-octave-type>e1 ; is-ndarray-type + <get-octave-type>e2 ; is-ndarray-type )
+      ; <is-relop>bo
+
+
+
+  infer-binop-m-s =
+    infer-binop-m-s-known-dims
+  + infer-binop-m-s-unknown-dims
+
+  // TODO
+  infer-binop-m-s-known-dims :
+    |[ e1 bo e2 ]| 
+      -> ts 
+    where
+      <get-octave-type>e1 => |[ matrix(t1,sh1*) ]|
+    ; <get-octave-type>e2 => |[ matrix(t2,sh2*) ]|
+    ; fail => ts
+
+  infer-binop-m-s-unknown-dims :
+    |[ e1 bo e2 ]| -> |[ matrix(t3) ]| 
+      where 
+      ( <get-octave-type>e1 => ts1
+      ; <get-octave-type>e2 => |[ matrix(t2,sh1*) ]|
+      ; <get-base-scalar-type>ts1 => t1
+      + <get-octave-type>e1 => |[ matrix(t1,sh2*) ]|
+      ; <get-octave-type>e2 => ts2
+      ; <get-base-scalar-type>ts2 => t2
+      ) 
+      ; <not(is-relop)>bo
+      ; <calculate-max-numeric-type>[ SCALAR(t1), SCALAR(t2)] => t3
+
+  infer-binop-m-s-unknown-dims :
+    |[ e1 bo e2 ]| -> |[ matrix(bool) ]| 
+      where 
+        ( <get-octave-type>e1 ; is-ndarray-type ; <get-base-scalar-type>e2 
+        + <get-octave-type>e2 ; is-ndarray-type ; <get-base-scalar-type>e1
+        )
+      ; <is-relop>bo
+
+
+// helper
+strategies
+
+  check-prefix-operand(op,type) =
+    ?|[ uo e ]|
+  ; <op>uo
+  ; <get-octave-type> e ; type 
+
+  check-postfix-operand(op,type) =
+    ?|[ e uo ]|
+  ; <op>uo
+  ; <get-octave-type> e ; type
+
+  check-binop-operands(op,type) =
+    check-binop-operands(op,type,type)
+
+  check-binop-operands(op,lhs,rhs) =
+    ?|[ e1 bo e2 ]|
+  ; <op>bo
+  ; <get-octave-type> e1 ; lhs => ts1
+  ; <get-octave-type> e2 ; rhs => ts2
+  ; !(ts1,ts2)
+
+
+strategies
+
+  infer-binop-s-s =
+    check-binop-operands(
+      not(is-relop) 
+    + ?|[ /  ]| 
+    + ?|[ ./ ]| 
+    + ?|[ \  ]| 
+    + ?|[ .\ ]|
+    , is-numeric-type
+    ) => (ts1,ts2)
+  ; !SCALAR(<calculate-max-numeric-type>[ts1,ts2])
+
+  infer-binop-s-s =
+    check-binop-operands(is-relop, is-numeric-type)
+  ; !|[ bool ]|
+
+  infer-binop-b-b =
+    ?|[ e1 bo e2 ]|
+  ; check-binop-operands(id,is-bool-type)
+  ; get-binop
+  ; <( \ |[ == ]| -> |[ bool ]| \ 
+     + \ |[ != ]| -> |[ bool ]| \ 
+     + \ |[ |  ]| -> |[ bool ]| \ 
+     + \ |[ || ]| -> |[ bool ]| \ 
+     + \ |[ &  ]| -> |[ bool ]| \ 
+     + \ |[ && ]| -> |[ bool ]| \ 
+    <+ !|[ int ]|
+     )>bo
+
+  infer-binop-c-c =
+    check-binop-operands(not(is-relop),is-complex-type) ; !|[ complex ]|
+  + check-binop-operands(is-relop,is-complex-type)      ; !|[ bool    ]| 
+
+
+strategies
+  infer-prefix-exp-type =
+    infer-uminus-exp-type 
+  + infer-negation-exp-type 
+  + infer-incr-exp-type 
+  + infer-decr-exp-type 
+
+  infer-uminus-exp-type =
+    check-prefix-operand("-", is-scalar-type) 
+  + check-prefix-operand("-", is-ndarray-type) 
+
+  infer-negation-exp-type =
+    check-prefix-operand("!", is-scalar-type) ; !|[ bool ]|
+  + check-prefix-operand("!", is-ndarray-type) => |[ matrix(t,sh*) ]| ; !|[ matrix(bool, sh*) ]|
+
+  infer-incr-exp-type =
+    check-prefix-operand("++",id)
+  + check-postfix-operand("++",id)
+
+  infer-decr-exp-type =
+    check-prefix-operand("--",id)
+  + check-postfix-operand("--",id)
+
+  infer-postfix-exp-type =
+    infer-incr-exp-type 
+  + infer-decr-exp-type 
+
+  infer-hermitian-exp-type =
+    check-postfix-operand("'",id) ; !tp |[ universal ]|
+  ; ti-warning-not-supported(|"Hermitian operator")
+
+  infer-transpose-exp-type =
+    check-postfix-operand(".'",id) ; !tp |[ universal ]|
+  ; ti-warning-not-supported(|"Transpose operator")
+
+
+/**
+ * Calls
+ */
+strategies
+
+  infer-call-exp-type =
+    infer-builtin-function-call-exp-type
+  + infer-mapping-call-exp-type
+
+  infer-builtin-function-call-exp-type =
+    ?|[ f(a*) ]|
+  ; where(<is-builtin-function+is-dld-function>f) 
+  ; ( ( bagof-type-of-builtin-call(|<get-nargout>)
+         <+ bagof-type-of-builtin-call(|0) )  
+      ; not([]) 
+      ; make-set
+      ; if length => 1 then 
+          ?[<id>] 
+        else 
+          warn(|"Overlapping rules (with different results) for builtin function") ; Hd 
+        end
+      <+ !|[ f(a*) ]|{UNIVERSAL()}
+    )
+
+  infer-mapping-call-exp-type =
+    ?|[ f(a*) ]|
+  ; where(<is-mapping-function>f)
+  ; ( bagof-type-of-mapping-call(|<get-nargout>) 
+    ; not([])
+    ; if length => 1 then 
+        ?[<id>|_] 
+      else 
+        ti-error(|"Overlapping rules for builtin function") 
+      end
+    <+ ti-error(|"Could not infer type of call to mapping function!"))
+
+/**
+ * Index operators
+ *
+ * Variants as index
+ *   - numbers
+ *   - colon
+ *   - range
+ *   - matrix
+ */
+strategies
+
+  infer-index-exp-type =
+    infer-subscript-exp-type
+  + infer-cellindex-exp-type
+  + infer-field-exp-type
+
+  infer-subscript-exp-type =
+    ?|[ lv [a*] ]|
+  ; <get-octave-type> lv => ts
+  ; switch <is-ndarray-type>ts 
+      case <has-only-numeric-type>a* :
+        !MATRIX(<get-base-type>ts,[]) => ts1
+      case <has-colon-as-index>a*  : 
+        !tp |[ universal ]|
+      ; ti-warning-not-supported(|"Colon in array index")
+      case <has-matrix-as-index>a* :
+        !tp |[ universal ]|
+      ; ti-warning-not-supported(|"Matrix in array index")
+      otherwise :
+        (?[j] ; !|[ 1 ]| => i <+ ?[i,j])
+      ; <get-type-from-cell(|i,j)>ts => ts1 
+    end
+
+  infer-cellindex-exp-type =
+    ?|[ lv {a*} ]|
+  ; <get-octave-type> lv => ts
+  ; if <has-colon-as-index + has-matrix-as-index>a* then
+      ti-error(|"Colon or Matrix in cell index will never be supported")
+    end
+  ; switch !ts
+      case is-cell-type : 
+        <(?[j] ; !|[ 1 ]| => i <+ ?[i,j])>a*
+      ; <get-type-from-cell(|i,j)>ts => ts1 
+      case is-octave-value-type : 
+        !tp |[ universal ]| => ts1 
+      otherwise : 
+        ti-error(|"Unsupported cell index operation")
+    end
+
+
+  get-type-from-cell(|i,j) =
+    where( <strip-annos>(i,j) => (k,l) )
+  ; ?CELL(<fetch-elem(?((k,l),<id>))>)
+
+  has-only-numeric-type = 
+    fetch-elem(get-type ; is-numeric-type)
+
+  has-colon-as-index =
+    fetch-elem(?|[ (:) ]|)
+
+  has-matrix-as-index =
+    fetch-elem(get-type ; is-ndarray-type)
+
+  infer-field-exp-type =
+    ?|[ lv . x ]|
+  ; <get-octave-type> lv => ts
+  ; switch !ts
+      case is-struct-type       : <get-type-from-struct(|x)>ts => ts1 
+      case is-octave-value-type : !tp |[ universal ]| => ts1 
+      otherwise                 : ti-error(|"Unsupported cell index operation")
+    end
+
+  get-type-from-struct(|x) =
+    ?RECORD(<fetch-elem(?VarTyped(x,<id>))>)
+  <+ !UNIVERSAL()
+
+  infer-variable-exp-type :
+    |[ x ]| -> ts 
+      where 
+        calculate-type-of => ts 
+
+/**
+ * Statements
+ */
+strategies
+
+  infer-statement =
+    infer-assignment-statement
+
+  infer-assignment-statement =
+    infer-single-assignment
+  + infer-multiple-assignment
+
+  infer-single-assignment =
+    ?|[ lv = e ]| 
+  ; if <?|[ x ]|>lv then
+      infer-single-simple-assignment
+    else
+      infer-single-complex-assignment
+    end
+  
+  infer-single-simple-assignment :
+    |[ x = e ]| -> |[ lv = e  ]|
+      where
+        <get-octave-type> e => ts
+      ; if <is-list>ts then
+          <zip(create-type-of-rule)>([x],ts) => [<get-type>] => ts1  
+        else
+          <create-type-of-rule>(x,ts) ; !ts => ts1
+        end
+      ; !|[ x ]|{ts1} => lv
+
+  create-type-of-rule :
+    (x,ts) -> |[ x ]|{ts}
+      where 
+        rules( type-of.x : |[ x ]| -> ts depends on [(x,x)] )
+      ; if-verbose2(ti-create-rule-debug(|"type-of"))
+
+  create-is-defined-rule =
+    ?(x,ts)
+  ; rules( is-defined.x : |[ x ]| -> ts depends on [(x,x)] )
+  ; if-verbose2(ti-create-rule-debug(|"is-defined"))
+
+  infer-single-complex-assignment =
+    ?|[ lv =  e  ]| 
+  ; where(<not(?|[ x ]|)>lv)
+  ; <get-octave-type> e => ts
+  ; if <?|[ x[a*] ]|>lv then
+      if <not(is-defined)>|[ x ]| then
+        <create-is-defined-rule>(x,|[ x ]|)
+      ; <create-type-of-rule>(x,MATRIX(<get-base-scalar-type>ts,[])) => lv1
+      ; !|[ lv1[a*] = e ]| 
+      else
+        <create-type-of-rule>(x,MATRIX(<get-base-scalar-type>ts,[])) => lv1
+      ; !|[ lv1[a*] = e ]| 
+      end
+    else
+      ti-warning-not-supported(|"Single assignment statement to cell index or fieldvar")
+    ; fail
+    end
+
+  infer-multiple-assignment =
+    ?|[ [ lvs* ] = e ]| 
+  ; switch <get-type>e => tps 
+      case is-octave-value-type: 
+        <map(\ |[ x ]| -> <create-type-of-rule>(x,UNIVERSAL()) \)>lvs* 
+      case is-list :
+        <zip(\ (|[ x ]|,tp) -> <create-type-of-rule>(x,tp) \)>(lvs*,tps) 
+    end => lvs0*
+  ; !|[ [ lvs0* ] = e ]|
+
+  infer-for-statement =
+    infer-simple-for-statement
+  + infer-complex-for-statement
+
+  infer-simple-for-statement =
+    ?t@|[ for x = e do e0 end ]|
+  ; <get-octave-type> e => ts
+  ; switch !ts
+      case is-scalar-type :
+        !ts 
+      case is-range-type : 
+        if <is-range-of-integers>e then
+          !|[ int ]|
+        else 
+          !|[ float ]|
+        end 
+      case is-ndarray-type : 
+        if ?MATRIX(t1,[sh1,sh2]) then 
+	  !|[ matrix(t1,1,sh2) ]| 
+	else
+          get-ndarray-base-type 
+	end 
+      case is-octave-value-type : 
+        !UNIVERSAL() 
+      case is-cell-type :
+        !|[ cell{} ]| 
+      otherwise : 
+        !t ; ti-error(|"Infering type for induction variable of for loop failed!")
+    end => ts1 
+  ; <create-type-of-rule>(x,ts1)
+  ; !|[ x ]|{ts1} => lv
+  ; !|[ for lv = e do e0 end ]|
+
+  is-range-of-integers = 
+    ?Range(e1,e2,e3) 
+  ; <map(get-type;is-int-type)>[e1,e2,e3]
+
+  infer-complex-for-statement =
+    ?|[ for [x, e1]  = e2 do e3 end ]|
+  ; <get-octave-type> e2 => ts
+  ; where( 
+      <create-type-of-rule>(x,|[ string ]|) 
+    )
+
+
+/**
+ * 
+ */
+strategies
+
+  for-range =
+    ?|[ for x = e1 do e2 end ]|
+  ; where(<Range(pure,pure,pure)>e1)
+  ; rules( prop-iv-range :+ _ -> (x,e1) )
+
+  pure =
+    ?|[ i ]| 
+  + ?|[ x ]| 
+  + BinOp(pure,id,pure)
+
+
+
+/**
+ * temp.
+ */
+
+strategies
+
+  infer-user-defined-function-call-exp-type =
+    ?|[ f(a*) ]| 
+  ; (  infer-temp-call-type 
+    <+ if <is-being-specialized>f => [] then
+         specialize-call( specialize-function-by-type, specialization-facts-by-type | <get-nargout>) 
+       end
+    <+ ti-error(|"Could not infer type of call to user defined function!")  
+    )
+
+  is-being-specialized =
+    ?f ; bigbagof-specializing 
+
+  generate-specialization-rule( | scopes) =
+    ?fcn@Function(result,f,args,body)
+  ; where( not( <get-config> "--avoid" ; fetch-elem(?f) ) ) 
+  ; rules(
+      specialize-call(specialize-function: a * a * a * a -> a,specialization-facts: a * a -> a | nargout) :
+        |[ f(ps) ]| -> |[ g(ps1) ]| {ts}
+          where 
+            log(|Debug(),HL())
+          ; log(|Debug(),["Trying to specialize function for call ",|[ f(ps) ]|])
+          ; log(|Debug(),HL())
+            
+          ; <specialization-facts(|args)>ps => (ps1,facts)
+          ; log(|Debug(),"Parameters of new specialized function",ps1) 
+          
+          ; log(|Debug(),"Facts used for new specialized function",facts)
+          
+          ; ( <specialized-function>(f,nargout,facts)=> spec_fcn@Function(new_result,g,_,_)
+            ; log(|Debug(),["Found previously specialized function of ",f," (for given facts)"],<id>)
+           
+            ; <map(get-type)>new_result ; try(?[<id>]) => ts           
+           <+ 
+              <specialize-function(|facts,nargout, scopes)>fcn => spec_fcn@Function(new_result,g,_,_)
+            ; log(|Debug(),["Specialized function ",f],<id>); log(|Debug(),"")
+  
+            ; <map(get-type)>new_result ; try(?[<id>]) => ts 
+            ; rules(
+                specialized-function  :+ (f,nargout,facts) -> spec_fcn
+                specialized-functions :+ _ -> spec_fcn
+              ) 
+            )
+         <+ ti-error( | <concat-strings> ["TI Specialization failed for function ",f,"."] )
+    ) 
+
+  specialize-function-by-type(|facts,nargout,scopes) :
+    fcn@Function(result,f,args,body) -> Function(new_result,g,new_args,new_body)
+      where 
+        dr-ignore-rules-state(
+          log(|Debug(),"Trying to specialize function with (facts,nargout,scopes)",(facts,nargout,scopes))
+          
+        ; where(get-var-names ;map({x:?x; new-dynamic-rules(|scopes, x,x) }))
+        ; log(|Debug(),"Generated new scopes for dynamic rules")
+
+        ; alter-name-by-type(|f,facts) => g 
+        ; log(|Debug(),<concat-strings>["New name of function will be: ",g])
+        
+        ; rules( specializing :+ f -> g ) 
+        ; <map(create-type-of-rule)>facts => new_args       
+        ; log(|Debug(),["Starting inferring types for function ",g])
+        
+        ; if <is-self-recursive(|f)>body then
+            // make temp rule
+            rules( 
+              infer-temp-call-type : 
+                |[ f(ps) ]| -> |[ g(ps)]| {<copy>(nargout,UNIVERSAL())} 
+                where <specialization-facts-by-type(|args)>ps => (_,facts) 
+            )
+          ; <infer-octave-types>body 
+
+            // determine return type if type + ov's 
+          ; <map({x: ?|[ x ]| ; <calculate-type-of-rec <+ !UNIVERSAL()>|[ x ]| })>result => rectypes 
+
+            // kill previous temp rule
+          ; rules( infer-temp-call-type :- |[ f(ps) ]| )
+          ; rules( infer-temp-call-type :  |[ f(ps) ]| -> |[ g(ps)]| {rectypes} )
+
+          ; <infer-octave-types>body 
+          ; where(<map(annotate-type(calculate-type-of-rec))>result => new_result)
+
+          else
+            <infer-octave-types>body 
+          ; where(<map(annotate-type(calculate-type-of))>result => new_result )
+
+          end => new_body
+        | scopes )
+
+  is-self-recursive(|f) = oncetd(?|[ f(ps) ]|)
+
+  calculate-type-of =
+    bagof-type-of => [<id>|_] <+ !UNIVERSAL()
+
+  calculate-type-of-rec =
+    bagof-type-of ; filter(not(UNIVERSAL())) => [<id>] <+ !UNIVERSAL()
+
+  specialization-facts-by-type(|args) =
+    ?ps
+  ; <zip((?Var(<id>),get-type ; ?[<id>] <+ !UNIVERSAL()))>(args,<id>)
+  ; !(ps,<id>) 
+    
+  alter-name-by-type(|f,facts) =
+    if ![] => facts then
+      <concat-strings>[f,"__",<new>]
+    else
+      ![f | <map(\ (n,tp) -> <concat-strings>[n,"_",<type-to-string>tp] \)>facts ]
+    ; separate-by(|"__")
+    ; concat-strings
+    end
+
+
+/**
+* Values
+*/
+strategies
+
+ infer-value-type =
+   infer-base-value-type
+ + infer-array-value-type
+ + infer-range-value-type
+ + infer-cell-value-type
+ + infer-builtin-constant-type
+
+ infer-base-value-type = 
+   \ |[ true  ]| -> |[ bool   ]| \
+ + \ |[ false ]| -> |[ bool   ]| \
+ + \ |[ i  ]|    -> |[ int       ]| \
+ + \ |[ r  ]|    -> |[ float     ]| \
+ + \ |[ @x ]|    -> |[ fcnhandle ]| \
+ + \ |[ s ]|     -> |[ string    ]| \
+
+ infer-array-value-type :
+   |[ e ]| -> |[ matrix(t,i,j) ]|
+   where 
+     ?matrix@Matrix(_) 
+   ; <calculate-matrix-base-type>matrix => t 
+   ; <calculate-nr-of-rows>matrix ; int-to-string => i 
+   ; <calculate-nr-of-columns>matrix ; int-to-string => j 
+
+ infer-range-value-type =
+   ?|[ (e0:e1:e2) ]|
+ ; ( calculate-range-size
+   ; int-to-string => i
+   ; ![|[ range(i) ]|]
+  <+ ![|[ range    ]|]
+   )
+
+ calculate-matrix-base-type = 
+   ?Matrix(<map(map(infer-value-type));unions>)
+ ; calculate-max-numeric-type
+
+
+/**
+ * Calculates number of elements in the range. 
+ *
+ * Given range a:b:c,
+ * if ( c>a && b>=0 ) || ( c>a && b>=0 ) 
+ *   size = floor((c-a)/b) + 1
+ * else 
+ *   fail
+ */
+ calculate-range-size = 
+   ?|[ (e0:e1:e2) ]|
+ ; <map(get-str-value)>[e0,e1,e2] => [a,b,c]
+ ; if <eq>(b,0) then
+     fail
+   end
+ ; if <eq>(c,a) then
+     !1
+   else
+     if <gt>(c,a) ; <geq>(b,0) + <lt>(c,a) ; <leq>(b,0) then
+       <div>(<subt>(c,a),b)
+     ; <add>(<int>,1)
+     else
+       fail
+     end
+   end
+
+ calculate-nr-of-rows = 
+   ?Matrix(<length>)
+
+ calculate-nr-of-columns = 
+   ?Matrix(<map(length) ; foldr(!0,max)>)
+
+ // take from builtin.ti
+ infer-builtin-constant-type :
+   Constant(c) -> <type-of-constant>c 
+
+ infer-cell-value-type :
+   Cell(rows) -> CELL(tps)
+     where
+       <add-indices>rows
+     ; mapconcat({i,r:
+         ?(i,r) 
+       ; <add-indices>r
+       ; map(\ (j,e) -> ((Int(<int-to-string>i),Int(<int-to-string>j)),<get-type>e)\) 
+       }) => tps
+
+  get-str-value =
+    ?Int(<string-to-int>)
+  + ?Float(<string-to-real>)
+
+   get-binop = ?BinOp(_,<id>,_)

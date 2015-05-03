@@ -1,0 +1,13 @@
+module Insn-Comment
+imports Insn-Whitespace
+exports
+  sorts Comment
+  lexical syntax
+   "%" ~[\n]* [\n]		-> LAYOUT
+   "#" ~[\n]* [\n]		-> LAYOUT
+   ";"				-> LAYOUT
+  	
+  lexical restrictions
+  Comment -/- [a-zAZ0-9\_\,\;\ \t]
+
+ 

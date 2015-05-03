@@ -1,0 +1,8 @@
+module Insn-Types
+exports
+  sorts IType
+  context-free syntax
+    "int"               -> IType{cons("INT")}
+    "float"             -> IType{cons("FLOAT")}
+    "str"               -> IType{cons("STRING")}
+    "word"              -> IType{cons("WORD")}

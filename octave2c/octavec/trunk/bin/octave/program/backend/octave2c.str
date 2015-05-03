@@ -1,0 +1,199 @@
+module octave/program/backend/octave2c 
+imports 
+  liblib
+  liboctavec
+  libo2c
+signature
+  constructors
+    Include: Term -> Term
+
+/**
+ * Compilation of Octave programs to C 
+ */
+strategies
+  io-octave2c = 
+    io-wrap(octave2c)
+
+
+  octave2c =
+    where(initialize-octave-stuff ; initialize-octave2c-stuff) 
+  ; remove-silent
+  ; mapping-to-feval
+  ; if Prog(id,Stats([])) then
+      oct-translation
+    else
+      translate-program
+    end
+  //; debug-pp(|"::: ")
+  ; concatenate-lists
+  ; c-simplify
+
+  oct-translation =
+    strip-annos
+  ; oct-c-translation // generate c code
+
+
+  oct-c-translation :
+    ot@Prog(fs,m) ->
+      |[
+	~ext-def*:incl
+
+        int Vstruct_levels_to_print ;
+        extern void install_builtins (void);
+
+	// signatures of builtin functions
+	~ext-def*:builtin-sigs
+
+
+        octave_value ans ;
+
+	// function definitions 
+	~ext-def*:cfuns
+
+     ]|
+      where 
+        builtin-function-header => builtin-sigs
+      ; <calls-to-feval ; map(translate-function-oct)>fs => cfuns 
+      ; generate-includes => incl 
+
+
+
+  translate-program :
+    ot@Prog(fs,m) ->
+      |[
+	~ext-def*:incl
+
+        int Vstruct_levels_to_print ;
+
+	// signatures of functions
+	~ext-def*:function-sigs
+
+	// signatures of builtin functions
+	~ext-def*:builtin-sigs
+
+	// function definitions 
+	~ext-def*:cfuns
+
+	// main function
+        int main() {
+	  char* oargv[] = { ~exp:e1,~exp:e2,~exp:e3,~exp:e4 , NULL};
+	  octave_main(3, oargv, 1);
+          Vstruct_levels_to_print = 10; 
+
+          ~id:(f) ();
+        }
+     ]|
+      where 
+        builtin-function-header => builtin-sigs
+      ; body-to-function(|m) => (func,f)
+      ; <map(translate-function)>[func |fs] => cfuns
+      ; map(c-function-to-declaration) => function-sigs
+      ; generate-includes => incl 
+      ; <TranslateString> String("octave") => e1
+      ; <TranslateString> String("-q") => e2
+      ; <TranslateString> String("--no-line-editing") => e3
+      ; <TranslateString> String("--no-history") => e4
+
+
+  builtin-function-header = 
+    collect(?Call(Var(<id>),_);is-builtin-function;name-to-c-declaration) => d1
+  ; collect(?Command(<id>,_);is-command;name-to-c-declaration) => d2
+  ; <conc>([<name-to-c-declaration>"feval"|d1],d2)
+
+  body-to-function(|e) =
+    new => f
+  ; !(Function([], f, [], e), f)
+
+  name-to-c-declaration :
+    f -> Include(<concat-strings>["octave_value_list F",f," (const octave_value_list& args, int ) ;"])
+
+  gather-globals = 
+    collect((?Global(<!Var(<id>)>)+?GlobalInit(<!Var(<id>)>,_));var-to-declaration-stmt)
+
+
+  read-list =
+    xtc-find ; <string-tokenize>(['\n'],<read-text-file>) ; map(try(un-double-quote))
+
+strategies
+
+  mapping-to-feval =
+    topdown(
+      try({tp:
+        \ Call(Var(f),ps) -> Call(Var("feval"),[<string-to-octave-string>f|ps]){tp}
+           where get-octave-type => tp ; <is-mapping-function>f 
+        \
+      })
+    )
+
+  calls-to-feval =
+    topdown(
+      try({tp:
+        \ Call(Var(f),ps) -> Call(Var("feval"),[<string-to-octave-string>f|ps])  \
+      })
+    )
+
+  c-function-to-declaration :
+    fun-def |[ ~type-spec:ts ~id:f(~param-dec*:ps) { ~dec*:_ ~stm*:_ } ]| 
+      -> dec|[ ~type-spec:ts ~id:f(~param-dec*:ps); ]|
+
+strategies
+
+  generate-includes = 
+   ![ Include("#include <iostream>") 
+    , Include("#include <sstream>")
+    , Include("#include <octave/oct.h>")
+    , Include("#include <octave/oct-map.h>")
+    , Include("#include <octave/oct-lvalue.h>")
+    , Include("#include <octave/octave.h>")
+    , Include("#include <octave/ov.h>")
+    , Include("#include <octave/parse.h>")
+    , Include("#include <ov-colon.h>")  //  Include only if magic colon is used
+    ,  Include("#include <octave/oct-rand.h>")  //  Include only if range is used
+    ]
+
+  concatenate-lists =
+    bottomup(try(\ Conc(xs, ys) -> <conc>(xs, ys) \ ))
+
+rules
+  remove-silent = topdown(try(?Silent(<id>)+ \ t{SCALAR(ANY_TYPE())} -> t {} \ + ?UnwindProtect(<id>,_)))
+
+/** 
+ * asd
+ */
+rules
+  c-simplify =
+    listbottomup(repeat(Csimplify))
+    
+  listdownup(s) =
+    rec x(s; (Cons(x,x) <+ all(x)); s)
+
+  listbottomup(s) =
+    rec x(s; (Cons(x,x) <+ all(x)); s)
+
+  listtopdown(s) =
+    rec x(s; (Cons(x,x) <+ all(x)); s)
+
+rules
+
+  Csimplify :
+    Compound(decs1, [Compound(decs2, stats) | stats']) -> 
+    Compound(<conc>(decs1,decs2), <conc>(stats, stats'))
+
+  Csimplify :
+    Compound(decs1, [Compound(decs2, stats)]) -> 
+    Compound(<conc>(decs1,decs2), stats)
+
+  Csimplify :
+    Compound(decs, stats) -> Compound(decs, stats')
+    where <listbu1(LiftCompound)> stats => stats'
+
+  LiftCompound :
+    [Compound([], stats1) | stats2] -> <conc> (stats1, stats2)
+
+  Csimplify :
+    [Compound([], stats) | stats'] -> <conc>(stats, stats')
+
+  Csimplify :
+    [Stat(EmptyExp()) | stats] -> stats
+
+

@@ -1,0 +1,54 @@
+module octave/program/optimize/copy-propagation
+imports 
+  liblib 
+  liboctavec
+  octave/program/optimize/constant-propagation
+  octave/lang/forward-propagation
+  dynamic-rules-utils
+overlays
+  info-level = Debug() //Info()
+  
+strategies
+  io-copy-propagation = 
+    io-wrap(copy-prop)
+
+  copy-prop = 
+    forward-prop(
+      fail
+    , id
+    , copy-prop
+    , copy-prop-after
+    | ["CopyProp"],[],[]
+    )
+
+  dr-new(|s,d) = ?"CopyProp" ; new-CopyProp(|s,d)
+  dr-undefine(|dep) = ?"CopyProp" ; undefine-CopyProp(|dep)
+
+  copy-prop-after =
+    copy-prop-assign <+ repeat1(?t1; CopyProp; propagation-notice(|<id>,t1) )
+    
+  propagation-notice(|s,t)    = log(|info-level,["Propagated  '",s,"' for '",t,"'"])
+
+  copy-prop-assign =
+    ? |[ x = y ]|
+    ; where( <not(eq)>(x,y) )
+    ; where( get-var-dependencies => xs )
+    ; where( innermost-scope-CopyProp => z )
+    ; rules( CopyProp.z : |[ x ]| -> |[ y ]| depends on xs )
+
+  prop-const-function-effects =
+    map({?x; undefine-dynamic-rules(|["CopyProp"],x)})
+
+  innermost-scope-CopyProp =
+    get-var-names => vars
+  ; innermost-scope-CopyProp(elem-of(|vars))
+
+  get-var-names =
+    collect(?Var(<id>))
+
+  get-var-dependencies =
+    collect(?Var(<!(<id>,<id>)>))
+
+  elem-of(|xs) =
+    where(<elem>(<id>, xs))
+      

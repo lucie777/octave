@@ -1,0 +1,15 @@
+module octave/program/optimize/constant-folding
+imports
+  liblib
+  liboctavec
+  liboctave-eval
+strategies
+  io-constant-folding =
+    io-wrap(constant-folding)
+ 
+  constant-folding =
+    bottomup(try(fold1))
+ 
+  fold1 = 
+    EvalBinOp + EvalRelOp + EvalString
+  

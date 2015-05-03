@@ -1,0 +1,20 @@
+module Insn-Literals
+exports 
+
+   %% sorts IntConst StrConst
+  lexical syntax
+    [0-9]+                      -> IntConst 
+    IntConst "." IntConst       -> RealConst
+      
+  lexical syntax
+    "'" StrChar* "'" 		-> StrConst
+    ~[\'\n] 			-> StrChar
+    "''"			-> StrChar
+    [\\] [n] 			-> StrChar
+    [\\] [t] 			-> StrChar
+    [\\] [\^] [A-Z]		-> StrChar
+    [\\] [0-9][0-9][0-9]	-> StrChar
+    [\\] [\ \t\n]+ [\\] 	-> StrChar
+   
+
+ 

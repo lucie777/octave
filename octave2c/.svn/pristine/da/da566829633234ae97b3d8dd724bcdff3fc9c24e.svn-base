@@ -1,0 +1,88 @@
+module octave/program/front/octave-format-checker
+imports 
+  liblib 
+  liboctavec
+strategies
+ 
+  io-octave-format-checker = 
+    io-wrap(octave-format)
+
+  octave-format =
+    Dec(octave-Expression, octave-Statements(octave-Expression))
+
+
+	
+  lvalue(exp) = 
+  rec lval(
+	Var(is-string)
+	+ Subscript(exp, list(exp))
+	+ CellIndex(exp,list(exp)) 
+	+ FieldVar(exp, is-string)
+        + VarArgs()
+	<+ debug(!"[OAS] Not a lvalue : "); fail
+  )
+
+  octave-Expression = 
+  rec exp(
+	  Int(is-string)
+	+ Float(is-string)
+	+ String(is-string)
+	+ Range(exp,exp,exp)
+	+ Matrix(list(list(exp)))
+	+ Cell(list(list(exp)))
+	+ Call(lvalue(exp),list(exp))
+	+ BinOp(exp, is-string, exp)
+	+ PrefixExp(is-string,exp)
+	+ PostfixExp(exp,is-string)
+	+ Constant(is-string)
+	+ Colon()
+	+ NilExp()
+	+ NaN()
+	+ Inf()
+	+ True()
+	+ False()
+	+ Command(lvalue(exp),list(is-string))
+	+ FcnHandle(is-string)
+    + AnonFcnHandle(list(exp), is-string, octave-Statements(octave-Expression))
+	+ lvalue(exp)
+	<+ debug(!"[OAS]Not an Expression: "); fail
+	)
+
+
+
+  octave-Statements(exp)= 
+  rec stat( 
+	  Assign(lvalue(exp), is-string, exp)
+	+ AssignMulti(list(lvalue(exp)), is-string, exp)
+        + If(exp,stat,stat)
+        + IfThen(exp,stat)
+	+ While(exp, stat)
+	+ ComplexFor(list(lvalue(exp)),exp, stat)
+	+ For(lvalue(exp),exp, stat)
+	+ TryCatch(stat, stat)
+	+ UnwindProtect(stat,stat)
+	+ Stats(list(stat))
+	+ Break()
+	+ Continue()
+	+ Return()
+	+ Global(is-string)
+	+ GlobalInit(is-string,exp)
+	+ Static(is-string)
+	+ StaticInit(is-string,exp)
+	+ Silent(stat)
+	+ Print(is-string,exp)
+	+ exp
+	<+ debug(!"[OAS]Not a Statement: "); giving-up
+  )
+
+
+
+  Dec(exp, stat) = 
+  rec dec( 
+	  Function(list(lvalue(exp)),is-string,list(lvalue(exp)),stat)
+	+ Prog(list(dec), stat)
+	+ stat
+	<+ debug(!"[OAS]Not a Declaration: "); giving-up
+  )
+
+
