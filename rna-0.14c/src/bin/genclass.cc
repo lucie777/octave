@@ -603,7 +603,7 @@ VariantInfo::init3 ()
 	 it != all_subtypes.end (); it++)
 	(*it)->all_supertypes.insert (this);
 
-    forward_declarations.insert (all_subtypes.begin (), all_subtypes.end ());
+    //forward_declarations.insert (all_subtypes.begin (), all_subtypes.end ());
     for (set<CompositeInfo *>::iterator it (all_subtypes.begin ());
 	 it != all_subtypes.end (); it++) {
 	CompositeInfo * ci (*it);
@@ -1451,6 +1451,7 @@ main (int argc, char * argv [])
     SystemInfo::Instance->register_context (context, & outputs);
 
     /////////////////////////////////////////
+
     // record depencendies
     /////////////////////////////////////////
     for (i = 0; i < outputs.size (); i++)

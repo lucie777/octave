@@ -21,8 +21,8 @@ Initialization::Initialize ()
     // Check if we are already initialized
     if (Initialized)
 	return;
-    
-    RNA_ASSERT (sizeof(Word) == 4);
+    //printf("%i\n",sizeof(Word));
+    //RNA_ASSERT (sizeof(Word) == 4);
 
     Error::Initialize ();
     Memory::Initialize ();

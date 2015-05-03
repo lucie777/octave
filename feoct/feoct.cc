@@ -32,6 +32,8 @@ void feoct_record (octave_user_function *fcn){
     //cout<<buf.str()<<endl;
   }
   fclose (dumpfile);
+  printf("------------PRINT: %s\n", fcn->name().c_str());
+
 };
 
 void feoct_end (){

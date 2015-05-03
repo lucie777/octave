@@ -2,7 +2,7 @@
 
 TOPDIR		=	..
 
-include $(TOPDIR)/Makeconf
+#include $(TOPDIR)/Makeconf
 
 GENCLASS    =   genclass
 
