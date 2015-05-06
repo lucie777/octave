@@ -1,0 +1,20 @@
+ 2002  tar -xvf aterm-2.5.tar.gz
+ 2012  patch aterm-2.5/aterm/hash.c <  aterm2.5.patch
+ 2013  cd aterm-2.5/
+ 2014  ./configure 
+ 2017  make clean
+ 2018  make
+ 2019  sudo make install
+ 2020  cd ..
+ 2024  tar -xvf sdf2-bundle-2.4.tar.gz
+ 2026  cd sdf2-bundle-2.4/
+ 2027  ./configure 
+ 2028  make clean
+ 2029  make
+ 2030  sudo make install
+ 2031  cd ..
+ 2033  tar -xvf strategoxt-0.17.tar.gz
+ 2034  cd strategoxt-0.17/
+ 2035  ./configure 
+ 2039  make ###surtout NE PAS faire make clean ou distclean ou make -j4 
+ 2040  sudo make install
