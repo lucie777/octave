@@ -11,6 +11,10 @@ sudo apt-get install gperf
 #sudo apt-get build-dep octave
 #sudo apt-get build-dep octave3.2
 
+
+cd /home/jade/octave/octave-3.8.2/libinterp
+ln -s ../../feoct/
+
 ./configure F77="gfortran" 
 make distclean
 ./configure
