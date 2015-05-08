@@ -2871,12 +2871,6 @@ AC_SUBST(ac_config_headers)
 AC_CONFIG_FILES([
   oct-conf-post.h:oct-conf-post.in.h
   Makefile 
-  doc/Makefile
-  doc/doxyhtml/Makefile
-  doc/doxyhtml/Doxyfile
-  doc/interpreter/Makefile
-  doc/liboctave/Makefile
-  doc/refcard/Makefile
   etc/icons/Makefile
   examples/Makefile
   libgnu/Makefile

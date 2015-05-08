@@ -71119,7 +71119,7 @@ DEFS=`sed -n "$ac_script" confdefs.h`
 
 
 
-ac_config_files="$ac_config_files oct-conf-post.h:oct-conf-post.in.h Makefile doc/Makefile doc/doxyhtml/Makefile doc/doxyhtml/Doxyfile doc/interpreter/Makefile doc/liboctave/Makefile doc/refcard/Makefile etc/icons/Makefile examples/Makefile libgnu/Makefile libgui/Makefile libinterp/Makefile liboctave/Makefile liboctave/cruft/Makefile liboctave/cruft/mkf77def scripts/Makefile src/Makefile test/Makefile"
+ac_config_files="$ac_config_files oct-conf-post.h:oct-conf-post.in.h Makefile  etc/icons/Makefile examples/Makefile libgnu/Makefile libgui/Makefile libinterp/Makefile liboctave/Makefile liboctave/cruft/Makefile liboctave/cruft/mkf77def scripts/Makefile src/Makefile test/Makefile"
 
 
 cat >confcache <<\_ACEOF
