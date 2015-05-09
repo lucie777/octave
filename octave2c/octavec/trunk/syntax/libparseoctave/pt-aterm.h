@@ -2,6 +2,9 @@
 #pragma interface
 #endif
 
+#ifndef pt_aterm_h
+#define pt_aterm_h
+
 #include <stack>
 #include <string>
 //#include <ext/hash_map>
@@ -14,7 +17,6 @@
 using namespace std;
 
 class tree_expression;
-
 
 class
 pt_aterm : public tree_walker
@@ -104,6 +106,13 @@ public:
 
   void visit_do_until_command (tree_do_until_command&);
 
+  /*update to octave-3.8.2*/
+  void visit_global_command(tree_global_command&){ cerr<<"pt-aterm.h "<<__LINE__<<"\n";abort();};
+  void visit_persistent_command(tree_persistent_command&){ cerr<<"pt-aterm.h "<<__LINE__<<"\n";abort();};
+  void visit_octave_user_script(octave_user_script&){ cerr<<"pt-aterm.h "<<__LINE__<<"\n";abort();};
+  void visit_function_def(tree_function_def&){ cerr<<"pt-aterm.h "<<__LINE__<<"\n";abort();};
+
+
   void write_output(void);
 
   ATerm 
@@ -147,6 +156,7 @@ private:
   pt_aterm& operator = (const pt_aterm&);
 };
 
+#endif
 
 /*
 ;;; Local Variables: ***

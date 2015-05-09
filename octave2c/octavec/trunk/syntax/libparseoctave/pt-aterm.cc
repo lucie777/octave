@@ -547,7 +547,8 @@ octave_value_to_ATerm(octave_value v)
 void
 pt_aterm::visit_constant (tree_constant& val)
 {
-  octave_value v = val.rvalue();
+  /*update to octave-3.8.2*/
+  octave_value v = val.rvalue1();
   pushATerm(octave_value_to_ATerm(v));
 }
 
@@ -828,7 +829,8 @@ extern "C" {
 
 ATerm initialize_octave_stuff(void) 
 {
-  Vstruct_levels_to_print = 10;
+  /*update to octave-3.8.2*/
+  //Vstruct_levels_to_print = 10;
   char* oargv[] = {"octave","-q", "--no-line-editing", "--no-history", NULL};
   octave_main(3, oargv, 1);
  
@@ -842,9 +844,11 @@ ATerm parse_octave(ATerm fn)
   char *fnc ;
   int retval = 0;
   fnc = ATgetName(ATgetSymbol(fn));
+  
   pt_aterm ast(fnc);
 
-  curr_sym_tab = top_level_sym_tab;
+  /*update to octave-3.8.2*/
+  //curr_sym_tab = top_level_sym_tab;
 
   
   symbol_record *s = lookup_by_name(fnc,false);
