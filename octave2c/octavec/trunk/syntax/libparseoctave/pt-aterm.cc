@@ -973,7 +973,7 @@ ATerm is_dld_function(ATerm fn)
     printf(" the symbol_table::symbol_record is not empty\n");
   }
 
-  if(/*s &&*/ s.is_dld_function()) {
+  if(s && s.is_dld_function()) {
     return fn;
     } */
   else {
