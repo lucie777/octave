@@ -13,6 +13,7 @@
 #include <comment-list.h>
 #include <pt-walk.h>
 #include <aterm2.h>
+#include <symtab.h>
 
 using namespace std;
 

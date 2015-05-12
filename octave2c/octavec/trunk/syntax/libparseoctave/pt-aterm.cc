@@ -8,24 +8,31 @@
 /* The size of `void *', as computed by sizeof. */
 #define SIZEOF_VOID_P 4
 
-
+#ifdef HAVE_CONFIG_H
 #include <octave/config.h> 
+#endif
 
 //#include <cctype>
 
 #include <iostream>
 
-#include <comment-list.h>
+//#include <comment-list.h>
 #include <error.h>
-#include <ov-usr-fcn.h>
-#include <ov-cell.h>
-#include <pr-output.h>
+//#include <ov-usr-fcn.h>
+//#include <ov-cell.h>
+//#include <pr-output.h>
 #include <pt-all.h> 
-#include <octave/oct.h>
-#include <octave/parse.h>
-#include <octave/oct-map.h>
+//#include <octave/oct.h>
+//#include <octave/parse.h>
+//#include <octave/oct-map.h>
 #include <octave/ov.h>
-#include <octave/octave.h>
+//#include <octave/octave.h>
+
+#include "debug.h"
+#include "defun.h"
+#include "sighandlers.h"
+#include "variables.h"
+#include "symtab.h"
 #include "pt-aterm.h"
 
 extern void install_builtins (void);
@@ -236,15 +243,15 @@ void
 pt_aterm::visit_identifier (tree_identifier& id)
 { 
 	/*  int retval = 0;
-	  symbol_record *s = lookup_by_name(id.name(),true);
+	  symbol_table::symbol_record *s = lookup_by_name(id.name(),true);
 
-	  if(s && s->is_builtin_function()) {
+	  if(s && s.is_builtin_function()) {
 	      pushATerm(ATmake("BuiltinFunction(<str>)",id.name().c_str()));		  
 	  }
-	  else if (s && s->is_user_function()) {
+	  else if (s && s.is_user_function()) {
 	      pushATerm(ATmake("FVar(<str>)",id.name().c_str()));
 	   }
-	  else if (s && s->is_mapper_function()) {
+	  else if (s && s.is_mapper_function()) {
 	      pushATerm(ATmake("MapperFunction(<str>)",id.name().c_str()));
 	   }
 	   else{ */
@@ -837,6 +844,46 @@ ATerm initialize_octave_stuff(void)
   return ATmake("[]");
 }
 
+// bool
+// lookup (symbol_table::symbol_record *sym_rec, bool exec_script)
+// {
+//   bool script_executed = false;
+
+//   if (! sym_rec->is_linked_to_global ())
+//     {
+//       if (sym_rec->is_defined ())
+//   	{
+//   	  if (sym_rec->is_function () && symbol_out_of_date (sym_rec))
+//   	    script_executed = load_fcn_from_file (sym_rec, exec_script);
+//   	}
+//       else if (! sym_rec->is_formal_parameter ())
+//   	{
+//   	  link_to_builtin_or_function (sym_rec);
+
+//   	  if (! sym_rec->is_defined ())
+//   	    script_executed = load_fcn_from_file (sym_rec, exec_script);
+//   	  else if (sym_rec->is_function () && symbol_out_of_date (sym_rec))
+//   	    script_executed = load_fcn_from_file (sym_rec, exec_script);
+//   	}
+//     }
+
+//   return script_executed;
+// }
+
+// Get the symbol record for the given name that is visible in the
+// current scope.  Reread any function definitions that appear to be
+// out of date.  If a function is available in a file but is not
+// currently loaded, this will load it and insert the name in the
+// current symbol table.
+
+// symbol_table::symbol_record *
+// lookup_by_name (const std::string& nm, bool exec_script)
+// {
+//   symbol_table::symbol_record *sym_rec = curr_sym_tab->lookup (nm, true);
+//   lookup (sym_rec, exec_script);
+//   return &sym_rec;
+// }
+// symbol_table::symbol_record sym_rec = symbol_table::find_symbol (nm/*,scope*/);
 
 ATerm parse_octave(ATerm fn) 
 {
@@ -851,26 +898,26 @@ ATerm parse_octave(ATerm fn)
   //curr_sym_tab = top_level_sym_tab;
 
   
-  symbol_record *s = lookup_by_name(fnc,false);
+  symbol_table::symbol_record s = symbol_table::find_symbol(fnc/*,scope*/);/*octave-3.8.2: lookup_by_name(fnc,false)*/
 
   if(s) {
-    if(s->is_user_function()) {
+    if(s.is_user_function()) {
       octave_user_function *f = (octave_user_function*)s->def().function_value();
       f->accept(ast);
       result = ast.get_ast();
     }
-    else if (s->is_builtin_function()) {
+    else if (s.is_builtin_function()) {
       printf("            IS A BUILTIN-function!!!\n\n");
       //result = ATmake("BuiltinFunction");
       //result = ATmake("[]");
       result = ATmake("BUILTIN-unction(<str>)","dld-func");     
     }
-    else if (s->is_dld_function()) {
+    else if (s.is_dld_function()) {
       printf("            IS A DLD-function!!!\n\n");
       result = ATmake("DLDFunction(<str>)","dld-func");
       //result = ATmake("DLDFunction");
     } 
-    else if (s->is_mapper_function()) {
+    else if (s.is_mapper_function()) {
       printf("            IS A mapper-function!!!\n\n");
       result = ATmake("MAPFunction(<str>)","dld-func");
       //result = ATmake("MAPFunction");
@@ -887,9 +934,9 @@ ATerm is_user_function(ATerm fn)
   ATerm result ;
   char *fnc;
   fnc = ATgetName(ATgetSymbol(fn));
-  symbol_record *s = lookup_by_name(fnc,false);
+  symbol_table::symbol_record s = symbol_table::find_symbol(fnc/*,scope*/);/*octave-3.8.2: lookup_by_name(fnc,false)*/
   
-  if(s && s->is_user_function()) {
+  if(/*s &&*/ s.is_user_function()) {
     return fn;
   }
   else {
@@ -902,9 +949,9 @@ ATerm is_builtin_function(ATerm fn)
   ATerm result ;
   char *fnc;
   fnc = ATgetName(ATgetSymbol(fn));
-  symbol_record *s = lookup_by_name(fnc,false);
+  symbol_table::symbol_record s = symbol_table::find_symbol(fnc/*,scope*/);/*octave-3.8.2: lookup_by_name(fnc,false)*/
   
-  if(s && s->is_builtin_function()) {
+  if(/*s &&*/ s.is_builtin_function()) {
     return fn;
   }
   else {
@@ -917,16 +964,16 @@ ATerm is_dld_function(ATerm fn)
   ATerm result ;
   char *fnc;
   fnc = ATgetName(ATgetSymbol(fn));
-  //symbol_record *s = lookup_by_name(fnc,false);
+  //symbol_table::symbol_record s = symbol_table::find_symbol(fnc/*,scope*/);/*octave-3.8.2: lookup_by_name(fnc,false)*/
   int r = symbol_exist(fnc, "file");
 
   if (r == 3) return fn;
 
   /* if (s) {
-    printf(" the symbol_record is not empty\n");
+    printf(" the symbol_table::symbol_record is not empty\n");
   }
 
-  if(s && s->is_dld_function()) {
+  if(/*s &&*/ s.is_dld_function()) {
     return fn;
     } */
   else {
@@ -939,9 +986,9 @@ ATerm is_command(ATerm fn)
   ATerm result ;
   char *fnc;
   fnc = ATgetName(ATgetSymbol(fn));
-  symbol_record *s = lookup_by_name(fnc,false);
+  symbol_table::symbol_record s = symbol_table::find_symbol(fnc/*,scope*/);/*octave-3.8.2: lookup_by_name(fnc,false)*/
   
-  if(s && s->is_command()) {
+  if(/*s &&*/ s.is_command()) {
     return fn;
   }
   else {
@@ -955,9 +1002,9 @@ ATerm is_function(ATerm fn)
   ATerm result ;
   char *fnc;
   fnc = ATgetName(ATgetSymbol(fn));
-  symbol_record *s = lookup_by_name(fnc,false);
+  symbol_table::symbol_record s = symbol_table::find_symbol(fnc/*,scope*/);/*octave-3.8.2: lookup_by_name(fnc,false)*/
   
-  if(s && s->is_function()) {
+  if(/*s &&*/ s.is_function()) {
     return fn;
   }
   else {
@@ -970,9 +1017,9 @@ ATerm is_mapping_function(ATerm fn)
   ATerm result ;
   char *fnc;
   fnc = ATgetName(ATgetSymbol(fn));
-  symbol_record *s = lookup_by_name(fnc,false);
+  symbol_table::symbol_record s = symbol_table::find_symbol(fnc/*,scope*/);/*octave-3.8.2: lookup_by_name(fnc,false)*/
   
-  if(s && s->is_mapper_function()) {
+  if(/*s &&*/ s.is_mapper_function()) {
     return fn;
   }
   else {
