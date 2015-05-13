@@ -1,0 +1,89 @@
+diff -Naur octave-3.0.4_old/liboctave/oct-alloc.h octave-3.0.4/liboctave/oct-alloc.h
+--- octave-3.0.4_old/liboctave/oct-alloc.h	2009-01-16 07:46:22.000000000 +0100
++++ octave-3.0.4/liboctave/oct-alloc.h	2015-05-13 14:56:08.151326360 +0200
+@@ -23,6 +23,8 @@
+ 
+ #if !defined (octave_oct_alloc_h)
+ #define octave_oct_alloc_h 1
++ 
++#include <cstddef>
+ 
+ class
+ OCTAVE_API
+diff -Naur octave-3.0.4_old/liboctave/oct-md5.h octave-3.0.4/liboctave/oct-md5.h
+--- octave-3.0.4_old/liboctave/oct-md5.h	2009-01-16 07:46:22.000000000 +0100
++++ octave-3.0.4/liboctave/oct-md5.h	2015-05-13 14:56:32.279646688 +0200
+@@ -20,6 +20,8 @@
+ 
+ */
+ 
++#include <cstdio>
++
+ extern OCTAVE_API std::string oct_md5 (const std::string str);
+ 
+ extern OCTAVE_API std::string oct_md5_file (const std::string file);
+diff -Naur octave-3.0.4_old/src/pr-output.cc octave-3.0.4/src/pr-output.cc
+--- octave-3.0.4_old/src/pr-output.cc	2009-01-16 07:46:24.000000000 +0100
++++ octave-3.0.4/src/pr-output.cc	2015-05-13 14:58:58.525588594 +0200
+@@ -1533,7 +1533,7 @@
+ }
+ 
+ template <class T>
+-/* static */ inline void
++/* static inline*/ void
+ pr_plus_format (std::ostream& os, const T& val)
+ {
+   if (val > T (0))
+@@ -1782,7 +1782,7 @@
+ }
+ 
+ template <>
+-/* static */ inline void
++/* static inline*/ void
+ pr_plus_format<> (std::ostream& os, const Complex& c)
+ {
+   double rp = c.real ();
+@@ -2296,7 +2296,7 @@
+ #undef PRINT_CONV
+ 
+ template <class T>
+-/* static */ inline void
++/* static inline*/ void
+ pr_int (std::ostream& os, const T& d, int fw = 0)
+ {
+   size_t sz = d.byte_size();
+@@ -2367,14 +2367,14 @@
+ // from GCC.  Isn't there a better way
+ 
+ template <class T>
+-/* static */ inline T
++/* static inline */ T
+ abs (T x)
+ {
+   return x < 0 ? -x : x;
+ }
+ 
+ #define INSTANTIATE_ABS(T) \
+-  template /* static */ inline T abs (T)
++  template /* static inline*/ T abs (T)
+ 
+ INSTANTIATE_ABS(signed char);
+ INSTANTIATE_ABS(short);
+@@ -2384,7 +2384,7 @@
+ 
+ #define SPECIALIZE_UABS(T) \
+   template <> \
+-  /* static */ inline unsigned T \
++  /* static inline*/ unsigned T                 \
+   abs (unsigned T x) \
+   { \
+     return x; \
+@@ -2455,7 +2455,7 @@
+ PRINT_INT_SCALAR_INTERNAL (uint64_t)
+ 
+ template <class T>
+-/* static */ inline void
++/* static inline */ void
+ octave_print_internal_template (std::ostream& os, const intNDArray<T>& nda,
+ 				bool pr_as_read_syntax, int extra_indent)
+ {
