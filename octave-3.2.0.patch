@@ -1,0 +1,86 @@
+diff -Naur octave-3.2.0_old/liboctave/oct-alloc.h octave-3.2.0/liboctave/oct-alloc.h
+--- octave-3.2.0_old/liboctave/oct-alloc.h	2009-05-25 08:04:59.000000000 +0200
++++ octave-3.2.0/liboctave/oct-alloc.h	2015-05-13 11:30:47.266878757 +0200
+@@ -23,6 +23,8 @@
+ 
+ #if !defined (octave_oct_alloc_h)
+ #define octave_oct_alloc_h 1
++ 
++#include <cstddef>
+ 
+ class
+ OCTAVE_API
+diff -Naur octave-3.2.0_old/src/pr-output.cc octave-3.2.0/src/pr-output.cc
+--- octave-3.2.0_old/src/pr-output.cc	2009-05-25 08:05:00.000000000 +0200
++++ octave-3.2.0/src/pr-output.cc	2015-05-13 11:30:11.726375039 +0200
+@@ -231,7 +231,7 @@
+ 
+   return os;
+ }
+-
++ 
+ static inline std::string
+ rational_approx (double val, int len)
+ {
+@@ -1531,7 +1531,7 @@
+ }
+ 
+ template <class T>
+-/* static */ inline void
++/* static inline*/ void
+ pr_plus_format (std::ostream& os, const T& val)
+ {
+   if (val > T (0))
+@@ -1922,7 +1922,7 @@
+ }
+ 
+ template <>
+-/* static */ inline void
++/* static inline*/ void
+ pr_plus_format<> (std::ostream& os, const Complex& c)
+ {
+   double rp = c.real ();
+@@ -2775,7 +2775,7 @@
+ #undef PRINT_CONV
+ 
+ template <class T>
+-/* static */ inline void
++/* static inline*/ void
+ pr_int (std::ostream& os, const T& d, int fw = 0)
+ {
+   size_t sz = d.byte_size();
+@@ -2846,14 +2846,14 @@
+ // from GCC.  Isn't there a better way
+ 
+ template <class T>
+-/* static */ inline T
++/* static inline */ T
+ abs (T x)
+ {
+   return x < 0 ? -x : x;
+ }
+ 
+ #define INSTANTIATE_ABS(T) \
+-  template /* static */ inline T abs (T)
++  template /* static inline*/ T abs (T)
+ 
+ INSTANTIATE_ABS(signed char);
+ INSTANTIATE_ABS(short);
+@@ -2863,7 +2863,7 @@
+ 
+ #define SPECIALIZE_UABS(T) \
+   template <> \
+-  /* static */ inline unsigned T \
++  /* static inline*/ unsigned T                 \
+   abs (unsigned T x) \
+   { \
+     return x; \
+@@ -2934,7 +2934,7 @@
+ PRINT_INT_SCALAR_INTERNAL (uint64_t)
+ 
+ template <class T>
+-/* static */ inline void
++/* static inline */ void
+ octave_print_internal_template (std::ostream& os, const intNDArray<T>& nda,
+ 				bool pr_as_read_syntax, int extra_indent)
+ {

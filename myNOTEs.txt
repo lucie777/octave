@@ -15,16 +15,19 @@ sudo apt-get install gperf
 cd /home/jade/octave/octave-3.8.2/libinterp
 ln -s ../../feoct/
 
+# build success for 3.2.0, 3.8.2
 ./configure F77="gfortran" 
 make distclean
-./configure
-make
+./configure F77="gfortran" 
+make -j4
 make install
 
 #in example
 ../src/mkoctfile oct_demo.cc
 #testing oct_demo
 /usr/local/bin/octave oct_demo ("easy as", 1, 2, 3)
+
+# 3.2.0: patch -Np0 -i octave-3.2.0.patch
 
 
 #http://ftp.gnu.org/gnu/automake/automake-1.14.1.tar.xz
@@ -33,4 +36,3 @@ in automake-1.14.1: ./configure; make; make install
 parse.y //rna
 cp     .h .cc
 cp-air .h .cc
-
