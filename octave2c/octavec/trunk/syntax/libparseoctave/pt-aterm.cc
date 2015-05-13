@@ -2,14 +2,15 @@
 #pragma implementation
 #endif
 
-/* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 4
+// /* The size of `long', as computed by sizeof. */
+// #define SIZEOF_LONG 8
 
 /* The size of `void *', as computed by sizeof. */
-#define SIZEOF_VOID_P 4
+#define SIZEOF_VOID_P 8
 
-
+#ifdef HAVE_CONFIG_H
 #include <octave/config.h> 
+#endif
 
 //#include <cctype>
 

@@ -42,7 +42,7 @@ strategies
   TranslateExpAsStmt(exp) =
     ?Call(Var("disp"),_) ; !stm |[ ~exp:<TranslateBuiltinCall> ; ]|
  <+ ?Call(Var("pwd"),_) ; !stm |[ ~exp:<TranslateBuiltinCall> ; ]|
- <+ ?Call(_,_){UNIT()} ; !stm |[ ~exp:<exp> ; ]|
+ <+ ?Call(_,_){UNIT} ; !stm |[ ~exp:<exp> ; ]|
  <+ \ Var(v) -> Print(v,Var(v){<get-octave-type>}) \ ; TranslateStmt(exp)
  <+ !stm |[ ~exp:<exp> ; ]|
 
