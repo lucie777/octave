@@ -1,4 +1,4 @@
-OCTAVE_VERSION = 3.0.0
+OCTAVE_VERSION = 3.0.4
 
 LDADD +=  -lparseoctave -L$(top_srcdir)/syntax/libparseoctave \
  -lstratego-runtime ${SSL_LIBS} -loctave -loctinterp -lcruft \

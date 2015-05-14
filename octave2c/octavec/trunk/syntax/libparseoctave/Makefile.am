@@ -8,7 +8,7 @@ pkglib_LTLIBRARIES = \
 libparseoctave_la_SOURCES = pt-aterm.cc pt-aterm.h
 
 AM_LDFLAGS += -L${ATERM}/lib -L${OCTAVE}/lib/$(OCTAVE_SUBDIR) -lATerm -loctave -loctinterp \
- -L${OCTAVE}/lib -L${OCTAVE}/libexec/octave/3.0.0
+ -L${OCTAVE}/lib -L${OCTAVE}/libexec/octave/3.0.4
 AM_CXXFLAGS = -I${OCTAVE}/include/$(OCTAVE_SUBDIR) -I${OCTAVE}/include/$(OCTAVE_SUBDIR)/octave \
   -I/${OCTAVE}/include
 
