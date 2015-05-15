@@ -14,7 +14,6 @@ TBLS_DEFS      = \
 
 sdfdata_DATA   = \
   Octave-Concrete-SyntaxRenamed.def \
-  Octave-Concrete-SyntaxRenamed.sdf \
   common.def \
   $(TBLS_DEFS) \
   $(wildcard *.sdf) \
