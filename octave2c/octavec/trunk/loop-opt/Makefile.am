@@ -9,16 +9,16 @@ libexec_PROGRAMS = \
 	Octave-Normalize-Loop \
 	Octave-Vectorize
 
-Octave_IVS_LDADD                = $(LDADD) ../src/liboctavec.la 
+Octave_IVS_LDADD                = ../src/liboctavec.la $(LDADD)  
 nodist_Octave_IVS_SOURCES = Octave-IVS.c
 
-Octave_Loop_Forward_Subst_LDADD                = $(LDADD) ../src/liboctavec.la 
+Octave_Loop_Forward_Subst_LDADD                = ../src/liboctavec.la $(LDADD)  
 nodist_Octave_Loop_Forward_Subst_SOURCES = Octave-Loop-Forward-Subst.c
 
-Octave_Normalize_Loop_LDADD                = $(LDADD) ../src/liboctavec.la 
+Octave_Normalize_Loop_LDADD                = ../src/liboctavec.la $(LDADD)  
 nodist_Octave_Normalize_Loop_SOURCES = Octave-Normalize-Loop.c
 
-Octave_Vectorize_LDADD                = $(LDADD) ../src/liboctavec.la 
+Octave_Vectorize_LDADD                = ../src/liboctavec.la $(LDADD)  
 nodist_Octave_Vectorize_SOURCES = Octave-Vectorize.c
 
 STRINCLUDES = -I $(top_srcdir)/syntax -I . -I ../src
