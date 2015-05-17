@@ -21,5 +21,5 @@ CLEANFILES =  *.tmp
 	chmod +x $@
 
 %.out:%.m Makefile.am
-        octavec -i $< --script --opts constant-propagation:partial-evaluation:dead-function-elimination:dead-code-elimination 
-        cp `basename $< .m` `basename $< .m`.out
+	octavec -i $< --script --opts constant-propagation:partial-evaluation:dead-function-elimination:dead-code-elimination 
+	cp `basename $< .m` `basename $< .m`.out
