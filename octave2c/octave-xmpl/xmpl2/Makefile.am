@@ -16,8 +16,8 @@ CLEANFILES =  *.tmp
 
 # Generate test-tools
 %-check: %-check.src
-	sed 's#__XT__#$(prefix)#g;\
-	   s#__MAKE__#$(MAKE)#g' < $< > $@
+	sed -e 's#__XT__#$(prefix)#g' \
+	-e  's#__MAKE__#$(MAKE)#g' < $< > $@
 	chmod +x $@
 
 %.out:%.m Makefile.am

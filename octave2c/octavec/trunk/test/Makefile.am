@@ -1,11 +1,11 @@
 include $(top_srcdir)/Makefile.xt
 include $(top_srcdir)/Makefile.octave
 
-HL="----------------------------------------------------------"
+HL="-----------------"
 ITS=5000
 
 
-TESTS_M_M = \
+TESTS_M = \
   constant_initialization.m \
   constant_initialization_ans.m \
   for_test.m \

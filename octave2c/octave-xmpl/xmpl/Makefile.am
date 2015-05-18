@@ -18,11 +18,11 @@ CLEANFILES = \
 
 # Generate test-tools
 %-check: %-check.src Makefile.am
-	sed 's#__XT__#$(prefix)#g;\
-	   s#__MAKE__#$(MAKE)#g' < $< > $@
+	sed -e 's#__XT__#$(prefix)#g' \
+	-e 's#__MAKE__#$(MAKE)#g' < $< > $@ 
 	chmod +x $@
-	
-	
+
+
 %.out:%.m Makefile.am
 	octavec -i $< --script --opts constant-propagation:partial-evaluation:dead-function-elimination:dead-code-elimination 
 	cp `basename $< .m` `basename $< .m`.out
