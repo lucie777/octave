@@ -18,3 +18,5 @@
  2035  ./configure 
  2039  make ###surtout NE PAS faire make clean ou distclean ou make -j4 
  2040  sudo make install
+
+# DOWNLOAD source files:  http://ftp.strategoxt.org/pub/stratego/

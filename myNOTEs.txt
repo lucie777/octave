@@ -16,9 +16,9 @@ cd /home/jade/octave/octave-3.8.2/libinterp
 ln -s ../../feoct/
 
 # build success for 3.2.0, 3.8.2
-./configure F77="gfortran" 
+./configure F77="gfortran" --disable-docs
 make distclean
-./configure F77="gfortran" 
+./configure F77="gfortran" --disable-docs
 make -j4
 make install
 
