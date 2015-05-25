@@ -22,12 +22,12 @@ CLEANFILES = \
 
 
 %.out:%.m Makefile.am
-	${OCTAVEC}/bin/octavec -i $< --script --opts constant-propagation:partial-evaluation:dead-function-elimination:dead-code-elimination 
+	octavec -i $< --script --opts constant-propagation:partial-evaluation:dead-function-elimination:dead-code-elimination 
 	cp `basename $< .m` `basename $< .m`.out
 
         
 %.txt:%.m
-	${OCTAVEC}/bin/octavec -i $< --script --opts constant-propagation:copy-propagation:common-subexpression-elimination:partial-evaluation:dead-function-elimination:dead-code-elimination \
+	octavec -i $< --script --opts constant-propagation:copy-propagation:common-subexpression-elimination:partial-evaluation:dead-function-elimination:dead-code-elimination \
 	 --o2o $@
 		 
 		 
