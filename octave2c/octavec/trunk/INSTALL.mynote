@@ -1,1 +1,2 @@
 libtoolize --force
+./configure --with-octave=/usr/local
